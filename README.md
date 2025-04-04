@@ -1,73 +1,169 @@
-# Welcome to your Lovable project
 
-## Project info
+# SecureVote Chain - Decentralized Voting System with Facial Recognition
 
-**URL**: https://lovable.dev/projects/39ed48dd-c583-49da-8fca-3703adbf2abe
+A complete decentralized voting system that combines blockchain technology with facial recognition for secure and transparent elections.
 
-## How can I edit this code?
+![Voting Process Flow](/public/lovable-uploads/3b40358e-fcb4-4f00-a793-d500b39c474d.png)
 
-There are several ways of editing your application.
+## Project Overview
 
-**Use Lovable**
+SecureVote Chain is a Bachelor of Engineering (BE) major project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and biometric verification. The system provides:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/39ed48dd-c583-49da-8fca-3703adbf2abe) and start prompting.
+- Facial recognition for voter authentication
+- Two-factor authentication with OTP
+- Blockchain-based vote storage and verification
+- Real-time result tracking and analytics
 
-Changes made via Lovable will be committed automatically to this repo.
+## Technology Stack
 
-**Use your preferred IDE**
+### Frontend
+- React.js with TypeScript
+- Tailwind CSS for styling
+- Recharts for data visualization
+- Ethers.js for blockchain integration
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Backend (Proposed)
+- Python with Flask for API endpoints
+- OpenCV and dlib for facial recognition
+- Web3.py for Ethereum blockchain interaction
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Blockchain
+- Ethereum Smart Contracts (Solidity)
+- IPFS for decentralized storage
 
-Follow these steps:
+## Features
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. **Secure User Registration**
+   - Personal information collection
+   - Facial biometric registration
+   - Identity verification
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. **Multi-factor Authentication**
+   - Facial recognition verification
+   - One-time password (OTP) verification
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. **Secure Voting Process**
+   - Election selection
+   - Candidate voting
+   - Blockchain transaction recording
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+4. **Transparent Results**
+   - Real-time vote counting
+   - Multiple visualization options
+   - Blockchain verification
+
+## Project Structure
+
+```
+src/
+├── components/         # Reusable UI components
+│   ├── Layout.tsx      # Main layout component
+│   ├── FaceRecognition.tsx # Facial recognition component
+│   └── OTPVerification.tsx # OTP verification component
+├── pages/              # Main application pages
+│   ├── Index.tsx       # Homepage
+│   ├── Registration.tsx # User registration
+│   ├── Vote.tsx        # Voting interface
+│   └── Results.tsx     # Election results
+├── utils/              # Utility functions and services
+│   ├── VotingContract.ts # Blockchain interface
+│   └── BACKEND_README.md # Backend documentation
+├── App.tsx             # Main application component
+└── index.css           # Global styles
+```
+
+## Implementation Steps
+
+### 1. Setup Development Environment
+- Install VS Code and required extensions
+- Set up Node.js and npm
+- Install Python and required libraries for backend
+
+### 2. Frontend Development
+- Create React application with TypeScript
+- Implement UI components using Tailwind CSS
+- Set up routing for different pages
+- Implement facial recognition with webcam integration
+
+### 3. Backend Development
+- Set up Python Flask server
+- Implement facial recognition algorithms
+- Create API endpoints for user registration and verification
+- Set up OTP generation and verification
+
+### 4. Blockchain Integration
+- Develop Ethereum smart contracts for voting
+- Set up Web3 connection for blockchain interaction
+- Implement vote recording and verification
+
+### 5. Testing
+- Test facial recognition accuracy
+- Verify blockchain integration
+- Perform security testing
+- Conduct user acceptance testing
+
+### 6. Deployment
+- Deploy frontend to web hosting
+- Deploy backend to server
+- Deploy smart contracts to Ethereum network
+
+## Running the Project
+
+### Prerequisites
+- Node.js 14+ and npm
+- Python 3.8+ (for backend)
+- Ethereum wallet (for blockchain interaction)
+
+### Frontend Setup
+```bash
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd secure-vote-chain
+
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Backend Setup (Proposed)
+```bash
+# Create Python virtual environment
+python -m venv venv
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Activate virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-**Use GitHub Codespaces**
+# Install dependencies
+pip install flask opencv-python dlib face_recognition numpy web3
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Run Flask server
+python app.py
+```
 
-## What technologies are used for this project?
+## Security Considerations
 
-This project is built with:
+- All facial biometric data should be encrypted
+- Use HTTPS for all API communications
+- Implement rate limiting for authentication attempts
+- Use liveness detection to prevent photo-based attacks
+- Store private keys securely
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Future Enhancements
 
-## How can I deploy this project?
+- Mobile application integration
+- Support for multiple election types
+- Advanced analytics and reporting
+- Integration with government ID verification
+- Improved accessibility features
 
-Simply open [Lovable](https://lovable.dev/projects/39ed48dd-c583-49da-8fca-3703adbf2abe) and click on Share -> Publish.
+## License
 
-## Can I connect a custom domain to my Lovable project?
+This project is for educational purposes as part of a Bachelor of Engineering major project.
 
-Yes it is!
+## Contact
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+For more information about this project, please contact the project team.

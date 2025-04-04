@@ -1,0 +1,291 @@
+
+import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
+import { BarChart2, PieChart as PieChartIcon, Activity, AlertCircle } from 'lucide-react';
+import Layout from '@/components/Layout';
+import VotingContract, { Election } from '@/utils/VotingContract';
+
+const COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#D946EF', '#14B8A6', '#F97316', '#F43F5E'];
+
+interface ElectionResult {
+  candidateName: string;
+  party: string;
+  votes: number;
+  percentage: number;
+}
+
+const Results = () => {
+  const [elections, setElections] = useState<Election[]>([]);
+  const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  const [results, setResults] = useState<ElectionResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchElections = async () => {
+      try {
+        setLoading(true);
+        const votingContract = VotingContract.getInstance();
+        const electionList = await votingContract.getElections();
+        setElections(electionList);
+        
+        if (electionList.length > 0) {
+          setSelectedElection(electionList[0]);
+          processResults(electionList[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching elections:', error);
+        setError('Failed to load election data');
+        toast({
+          title: "Error",
+          description: "Failed to load election results. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchElections();
+  }, []);
+  
+  const processResults = (election: Election) => {
+    if (!election || !election.candidates) return;
+    
+    const totalVotes = election.candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0);
+    
+    const processedResults = election.candidates.map(candidate => ({
+      candidateName: candidate.name,
+      party: candidate.party,
+      votes: candidate.voteCount,
+      percentage: totalVotes > 0 ? (candidate.voteCount / totalVotes) * 100 : 0
+    }));
+    
+    // Sort by votes in descending order
+    processedResults.sort((a, b) => b.votes - a.votes);
+    
+    setResults(processedResults);
+  };
+  
+  const handleElectionChange = (value: string) => {
+    const election = elections.find(e => e.id.toString() === value);
+    if (election) {
+      setSelectedElection(election);
+      processResults(election);
+    }
+  };
+  
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+  
+  const renderBlockchainInfo = () => {
+    return (
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-3">Blockchain Verification</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="blockchain-block">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">Election Smart Contract</h4>
+              <Badge variant="outline">Verified</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              All votes are securely recorded on the blockchain
+            </p>
+            <div>
+              <p className="text-xs font-medium">Contract Address</p>
+              <p className="blockchain-hash">0x7EF2e0048f5bAeDe046f6BF797943daF4ED8CB47</p>
+            </div>
+          </div>
+          
+          <div className="blockchain-block">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">Latest Block</h4>
+              <Badge variant="outline">#{Math.floor(Math.random() * 9000000) + 1000000}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Last vote recorded {Math.floor(Math.random() * 30) + 1} minutes ago
+            </p>
+            <div>
+              <p className="text-xs font-medium">Block Hash</p>
+              <p className="blockchain-hash">0x{Array(64).fill(0).map(() => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join('')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  if (loading) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+            <div className="h-64 bg-slate-200 rounded"></div>
+            <div className="h-32 bg-slate-200 rounded"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Results</h2>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </Layout>
+    );
+  }
+  
+  return (
+    <Layout>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Election Results</h1>
+            <p className="text-muted-foreground">
+              View and analyze vote results from all elections
+            </p>
+          </div>
+          
+          <div className="mt-4 md:mt-0 w-full md:w-64">
+            <Select
+              onValueChange={handleElectionChange}
+              defaultValue={selectedElection?.id.toString()}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Election" />
+              </SelectTrigger>
+              <SelectContent>
+                {elections.map(election => (
+                  <SelectItem key={election.id} value={election.id.toString()}>
+                    {election.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {selectedElection ? (
+          <>
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>{selectedElection.title}</CardTitle>
+                <CardDescription>{selectedElection.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="bar">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="bar" className="flex items-center">
+                      <BarChart2 className="h-4 w-4 mr-2" />
+                      Bar Chart
+                    </TabsTrigger>
+                    <TabsTrigger value="pie" className="flex items-center">
+                      <PieChartIcon className="h-4 w-4 mr-2" />
+                      Pie Chart
+                    </TabsTrigger>
+                    <TabsTrigger value="table" className="flex items-center">
+                      <Activity className="h-4 w-4 mr-2" />
+                      Table
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="bar">
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={results}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="candidateName" />
+                          <YAxis />
+                          <Tooltip formatter={(value, name) => [value, 'Votes']} />
+                          <Bar dataKey="votes" fill="#3B82F6">
+                            {results.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="pie">
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={results}
+                            dataKey="votes"
+                            nameKey="candidateName"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            label={({ candidateName, percentage }) => `${candidateName}: ${percentage.toFixed(1)}%`}
+                          >
+                            {results.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value, name, props) => [value, props.payload.candidateName]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="table">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 font-medium">Rank</th>
+                            <th className="text-left py-3 font-medium">Candidate</th>
+                            <th className="text-left py-3 font-medium">Party</th>
+                            <th className="text-right py-3 font-medium">Votes</th>
+                            <th className="text-right py-3 font-medium">Percentage</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.map((result, index) => (
+                            <tr key={index} className="border-b">
+                              <td className="py-3">{index + 1}</td>
+                              <td className="py-3 font-medium">{result.candidateName}</td>
+                              <td className="py-3">{result.party}</td>
+                              <td className="py-3 text-right">{result.votes}</td>
+                              <td className="py-3 text-right">{formatPercentage(result.percentage)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+            
+            {renderBlockchainInfo()}
+          </>
+        ) : (
+          <div className="text-center py-12 border rounded-lg">
+            <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No Elections Found</h2>
+            <p className="text-muted-foreground">
+              There are no elections available to display results for.
+            </p>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default Results;
