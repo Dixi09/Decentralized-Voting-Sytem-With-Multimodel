@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Vote from "./pages/Vote";
 import Registration from "./pages/Registration";
 import Results from "./pages/Results";
+import Profile from "./pages/Profile";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +25,8 @@ const App = () => (
           <Route path="/vote" element={<Vote />} />
           <Route path="/registration" element={<Registration />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
