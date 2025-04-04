@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { User, Loader2, AlertCircle, ThumbsUp } from 'lucide-react';
+import { User, Loader2, AlertCircle, ThumbsUp, Camera, CameraOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface FaceRecognitionProps {
@@ -16,21 +16,30 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
   const [isCaptured, setIsCaptured] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [cameraError, setCameraError] = useState(false);
   
   // Start the webcam
   const startWebcam = async () => {
     try {
+      setCameraError(false);
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' } 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 } 
+        } 
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Wait for video to be loaded before setting isCapturing
+        videoRef.current.onloadedmetadata = () => {
+          setIsCapturing(true);
+        };
       }
-      
-      setIsCapturing(true);
     } catch (error) {
       console.error('Error accessing webcam:', error);
+      setCameraError(true);
       toast({
         title: "Camera Access Denied",
         description: "Please allow camera access to continue with facial verification.",
@@ -135,7 +144,14 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
       <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
         {!isCapturing ? (
           <div className="flex h-64 items-center justify-center bg-muted">
-            <User className="h-16 w-16 text-muted-foreground/60" />
+            {cameraError ? (
+              <div className="text-center p-4">
+                <CameraOff className="h-16 w-16 text-destructive mx-auto mb-2" />
+                <p className="text-sm text-destructive">Camera access denied</p>
+              </div>
+            ) : (
+              <User className="h-16 w-16 text-muted-foreground/60" />
+            )}
           </div>
         ) : (
           <video 
@@ -170,6 +186,7 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
       <div className="flex gap-2">
         {!isCapturing && (
           <Button onClick={startWebcam} className="w-full">
+            <Camera className="mr-2 h-4 w-4" />
             Start Camera
           </Button>
         )}
