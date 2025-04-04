@@ -3,7 +3,16 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShieldCheck, Vote, BarChart, ArrowRight, LockKeyhole, BookOpen, FaceIcon } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  Vote, 
+  BarChart, 
+  ArrowRight, 
+  LockKeyhole, 
+  BookOpen, 
+  User,
+  Check 
+} from 'lucide-react';
 import Layout from '@/components/Layout';
 
 const Home = () => {
@@ -47,7 +56,7 @@ const Home = () => {
             <Card className="bg-white dark:bg-slate-800">
               <CardContent className="p-6">
                 <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
-                  <FaceIcon className="h-6 w-6" />
+                  <User className="h-6 w-6" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Facial Verification</h3>
                 <p className="text-muted-foreground">
