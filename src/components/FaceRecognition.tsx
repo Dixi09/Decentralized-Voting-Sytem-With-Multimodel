@@ -17,25 +17,52 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [cameraError, setCameraError] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   
-  // Start the webcam
+  // Start the webcam with improved error handling and video setup
   const startWebcam = async () => {
     try {
       setCameraError(false);
+      
+      // Stop any existing streams first
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Request camera with specific constraints for better compatibility
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user',
           width: { ideal: 640 },
-          height: { ideal: 480 } 
-        } 
+          height: { ideal: 480 }
+        },
+        audio: false
       });
       
+      setCameraStream(stream);
+      
       if (videoRef.current) {
+        // Set stream to video element
         videoRef.current.srcObject = stream;
-        // Wait for video to be loaded before setting isCapturing
+        
+        // Play the video immediately
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.error('Error playing video:', playError);
+          throw new Error('Failed to play video stream');
+        }
+        
+        // Set capturing state only after video is successfully playing
         videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, dimensions:', 
+            videoRef.current?.videoWidth, 
+            'x', 
+            videoRef.current?.videoHeight);
           setIsCapturing(true);
         };
+      } else {
+        throw new Error('Video element not available');
       }
     } catch (error) {
       console.error('Error accessing webcam:', error);
@@ -48,43 +75,52 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     }
   };
   
-  // Stop the webcam
+  // Stop the webcam with improved cleanup
   const stopWebcam = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      const tracks = stream.getTracks();
-      
-      tracks.forEach((track) => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => {
         track.stop();
       });
-      
-      videoRef.current.srcObject = null;
-      setIsCapturing(false);
+      setCameraStream(null);
     }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsCapturing(false);
   };
   
   // Capture image from webcam
   const captureImage = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        // Set canvas dimensions to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        // Draw the current video frame on the canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        setIsCaptured(true);
-        
-        // In a real implementation, you would now send this image to the server
-        // for facial recognition verification
-        verifyFace();
-      }
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas elements not available');
+      return;
     }
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      console.error('Could not get canvas context');
+      return;
+    }
+    
+    console.log('Capturing image from video:', video.videoWidth, 'x', video.videoHeight);
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    // Draw the current video frame on the canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    setIsCaptured(true);
+    
+    // In a real implementation, you would now send this image to the server
+    // for facial recognition verification
+    verifyFace();
   };
   
   // Simulate facial verification with backend
@@ -135,9 +171,11 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
   // Clean up on component unmount
   useEffect(() => {
     return () => {
-      stopWebcam();
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [cameraStream]);
   
   return (
     <div className="flex flex-col items-center">
@@ -158,7 +196,8 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
             ref={videoRef} 
             autoPlay 
             playsInline 
-            muted 
+            muted
+            style={{ width: '100%', height: '264px', objectFit: 'cover' }}
             className={`w-full h-64 object-cover ${isCaptured ? 'hidden' : 'block'}`}
           />
         )}
