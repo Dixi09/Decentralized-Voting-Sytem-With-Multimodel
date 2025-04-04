@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/hooks/use-toast';
-import { Shield, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface OTPVerificationProps {
   onVerified: () => void;
@@ -11,84 +10,58 @@ interface OTPVerificationProps {
 }
 
 const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }) => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  const timerRef = useRef<number | null>(null);
   
-  // Generate a random OTP when the component mounts
+  // Generate a random 6-digit OTP on component mount
   useEffect(() => {
-    generateNewOTP();
+    generateOTP();
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, []);
   
-  // Timer countdown
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    
-    const timer = setTimeout(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [timeLeft]);
-  
-  // Generate a new OTP and reset the timer
-  const generateNewOTP = () => {
+  const generateOTP = () => {
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(newOtp);
-    setTimeLeft(60);
     
-    // In a real app, this would send the OTP to the user's phone or email
+    // Show the OTP in a toast notification (in a real app, this would be sent via SMS/email)
     toast({
       title: "OTP Generated",
-      description: `Your OTP is: ${newOtp} (Shown for demo purposes)`,
-      duration: 10000,
+      description: `Your verification code is: ${newOtp}`,
     });
     
-    console.log('Generated OTP:', newOtp);
+    // Start the resend countdown
+    setResendDisabled(true);
+    setCountdown(30);
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    timerRef.current = window.setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setResendDisabled(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
   
-  // Handle OTP input change
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      value = value[0];
-    }
-    
-    if (value && !/^\d+$/.test(value)) {
-      return;
-    }
-    
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    
-    // Auto-focus next input on entry
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-input-${index + 1}`);
-      if (nextInput) {
-        nextInput.focus();
-      }
-    }
-  };
-  
-  // Handle key press for backspace
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-input-${index - 1}`);
-      if (prevInput) {
-        prevInput.focus();
-      }
-    }
-  };
-  
-  // Verify the entered OTP
-  const verifyOTP = () => {
-    const enteredOtp = otp.join('');
-    
-    if (enteredOtp.length !== 6) {
+  const handleVerify = () => {
+    if (otp.length < 6) {
       toast({
-        title: "Invalid OTP",
-        description: "Please enter all 6 digits of the OTP",
+        title: "Incomplete OTP",
+        description: "Please enter the complete 6-digit code",
         variant: "destructive",
       });
       return;
@@ -96,82 +69,74 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
     
     setIsVerifying(true);
     
-    // Simulate verification delay
+    // Simulate API verification delay
     setTimeout(() => {
-      if (enteredOtp === generatedOtp) {
+      if (otp === generatedOtp) {
         toast({
           title: "OTP Verified",
-          description: "Your identity has been successfully verified",
-          variant: "default",
+          description: "Your identity has been verified successfully",
         });
-        setIsVerifying(false);
         onVerified();
       } else {
         toast({
-          title: "Verification Failed",
-          description: "The OTP you entered is incorrect. Please try again.",
+          title: "Invalid OTP",
+          description: "The code you entered doesn't match. Please try again.",
           variant: "destructive",
         });
-        setIsVerifying(false);
+        setOtp('');
         onError();
       }
+      setIsVerifying(false);
     }, 1500);
   };
   
+  const handleResend = () => {
+    generateOTP();
+    setOtp('');
+  };
+  
   return (
-    <div className="flex flex-col items-center p-6 rounded-lg border bg-card text-card-foreground shadow-sm">
-      <Shield className="h-10 w-10 text-primary mb-2" />
-      <h3 className="text-lg font-semibold">One-Time Password Verification</h3>
-      <p className="text-sm text-muted-foreground text-center mb-6">
-        Enter the 6-digit code sent to your registered mobile device
-      </p>
-      
-      <div className="flex gap-2 mb-6">
-        {otp.map((digit, index) => (
-          <Input
-            key={index}
-            id={`otp-input-${index}`}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={digit}
-            onChange={(e) => handleOtpChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            className="w-12 h-12 text-center text-lg font-semibold"
-            autoFocus={index === 0}
-          />
-        ))}
+    <div className="flex flex-col items-center space-y-6">
+      <div className="text-center space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Enter the 6-digit code sent to your registered device
+        </p>
+        <p className="text-xs text-muted-foreground">
+          (For demo purposes, the OTP is shown in a notification)
+        </p>
       </div>
       
-      <Button 
-        onClick={verifyOTP} 
-        disabled={isVerifying || otp.join('').length !== 6}
-        className="w-full mb-4"
-      >
-        {isVerifying ? 'Verifying...' : 'Verify OTP'}
-      </Button>
+      <InputOTP
+        maxLength={6}
+        value={otp}
+        onChange={(value) => setOtp(value)}
+        render={({ slots }) => (
+          <InputOTPGroup>
+            {slots.map((slot, index) => (
+              <InputOTPSlot key={index} {...slot} />
+            ))}
+          </InputOTPGroup>
+        )}
+      />
       
-      <div className="flex flex-col items-center text-sm">
-        <div className="text-muted-foreground mb-2">
-          {timeLeft > 0 ? (
-            <span>OTP expires in {timeLeft} seconds</span>
-          ) : (
-            <span className="text-destructive flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
-              OTP expired
-            </span>
-          )}
-        </div>
-        
+      <div className="flex flex-col w-full gap-2">
         <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={generateNewOTP}
-          disabled={timeLeft > 50} // Prevent spam clicking
-          className="flex items-center"
+          onClick={handleVerify} 
+          disabled={otp.length < 6 || isVerifying}
+          className="w-full"
         >
-          <RefreshCw className="h-3.5 w-3.5 mr-1" />
-          Resend OTP
+          {isVerifying ? "Verifying..." : "Verify OTP"}
+        </Button>
+        
+        <Button
+          variant="outline"
+          onClick={handleResend}
+          disabled={resendDisabled}
+          className="w-full"
+        >
+          {resendDisabled 
+            ? `Resend code in ${countdown}s` 
+            : "Resend code"}
         </Button>
       </div>
     </div>
