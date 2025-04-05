@@ -7,10 +7,20 @@ interface UseCameraProps {
 }
 
 export function useCamera({ onError }: UseCameraProps = {}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(document.createElement('video'));
   const [isCapturing, setIsCapturing] = useState(false);
   const [cameraError, setCameraError] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  // Create and configure the video element
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.autoplay = true;
+      videoRef.current.playsInline = true;
+      videoRef.current.muted = true;
+      videoRef.current.className = "w-full h-full object-cover";
+    }
+  }, []);
 
   // Start the webcam with improved error handling and video setup
   const startWebcam = async () => {
@@ -96,25 +106,7 @@ export function useCamera({ onError }: UseCameraProps = {}) {
     };
   }, [cameraStream]);
 
-  // Modify the auto-start webcam logic to ensure the component is fully mounted
-  useEffect(() => {
-    // Delay the startWebcam call to ensure the video element is mounted
-    const timeoutId = setTimeout(() => {
-      if (videoRef.current) {
-        startWebcam();
-      } else {
-        console.error("Video element not mounted yet");
-        setCameraError(true);
-        if (onError) {
-          onError();
-        }
-      }
-    }, 1000); // Increased delay to 1000ms to ensure component is fully mounted
-    
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, []);
+  // Automatic camera start is now handled by the component
 
   return {
     videoRef,

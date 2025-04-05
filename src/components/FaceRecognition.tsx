@@ -1,10 +1,11 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
 import CameraFeedback from '@/components/face-verification/CameraFeedback';
 import VerificationStatus from '@/components/face-verification/VerificationStatus';
 import ActionButtons from '@/components/face-verification/ActionButtons';
+import { toast } from '@/hooks/use-toast';
 
 interface FaceRecognitionProps {
   onVerified: () => void;
@@ -14,6 +15,7 @@ interface FaceRecognitionProps {
 const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const [cameraInitialized, setCameraInitialized] = useState(false);
   
   // Use custom hooks to manage camera and face verification state
   const { videoRef, isCapturing, cameraError, startWebcam, stopWebcam } = useCamera({ onError });
@@ -33,12 +35,39 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     captureImage(videoRef, canvasRef);
   };
 
+  // Better handling of camera initialization
+  useEffect(() => {
+    // Start webcam when component mounts with a delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      startWebcam().catch(err => {
+        console.error('Failed to start webcam:', err);
+        toast({
+          title: "Camera Error",
+          description: "Failed to initialize camera. Please check your permissions and try again.",
+          variant: "destructive",
+        });
+        onError();
+      });
+    }, 1500); // Increased delay for better reliability
+    
+    return () => {
+      clearTimeout(timeoutId);
+      stopWebcam(); // Ensure camera is stopped when component unmounts
+    };
+  }, []);
+
   // Ensure video is properly appended to the DOM
   useEffect(() => {
-    if (videoRef.current && videoContainerRef.current && !videoContainerRef.current.contains(videoRef.current)) {
-      videoContainerRef.current.appendChild(videoRef.current);
+    // Only attempt to append the video if we have both references and the video isn't already there
+    if (videoRef.current && videoContainerRef.current) {
+      // Check if the video is not already a child of the container
+      if (!videoContainerRef.current.contains(videoRef.current)) {
+        videoContainerRef.current.innerHTML = ''; // Clear container first
+        videoContainerRef.current.appendChild(videoRef.current);
+        setCameraInitialized(true);
+      }
     }
-  }, []);
+  }, [videoRef.current, videoContainerRef.current, isCapturing]);
   
   return (
     <div className="flex flex-col items-center">
