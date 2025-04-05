@@ -34,6 +34,7 @@ export function useCamera({ onError }: UseCameraProps = {}) {
       
       setCameraStream(stream);
       
+      // Make sure videoRef.current exists before trying to set srcObject
       if (videoRef.current) {
         // Set stream to video element
         videoRef.current.srcObject = stream;
@@ -95,11 +96,20 @@ export function useCamera({ onError }: UseCameraProps = {}) {
     };
   }, [cameraStream]);
 
-  // Automatically start webcam when component mounts
+  // Modify the auto-start webcam logic to ensure the component is fully mounted
   useEffect(() => {
+    // Delay the startWebcam call to ensure the video element is mounted
     const timeoutId = setTimeout(() => {
-      startWebcam();
-    }, 500);
+      if (videoRef.current) {
+        startWebcam();
+      } else {
+        console.error("Video element not mounted yet");
+        setCameraError(true);
+        if (onError) {
+          onError();
+        }
+      }
+    }, 1000); // Increased delay to 1000ms to ensure component is fully mounted
     
     return () => {
       clearTimeout(timeoutId);

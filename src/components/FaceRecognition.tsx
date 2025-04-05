@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
 import CameraFeedback from '@/components/face-verification/CameraFeedback';
@@ -13,6 +13,7 @@ interface FaceRecognitionProps {
 
 const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   
   // Use custom hooks to manage camera and face verification state
   const { videoRef, isCapturing, cameraError, startWebcam, stopWebcam } = useCamera({ onError });
@@ -31,6 +32,13 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
   const handleCaptureImage = () => {
     captureImage(videoRef, canvasRef);
   };
+
+  // Ensure video is properly appended to the DOM
+  useEffect(() => {
+    if (videoRef.current && videoContainerRef.current && !videoContainerRef.current.contains(videoRef.current)) {
+      videoContainerRef.current.appendChild(videoRef.current);
+    }
+  }, []);
   
   return (
     <div className="flex flex-col items-center">
@@ -38,14 +46,12 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
         {!isCapturing ? (
           <CameraFeedback cameraError={cameraError} />
         ) : (
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted
-            style={{ width: '100%', height: '264px', objectFit: 'cover' }}
-            className={`w-full h-64 object-cover ${isCaptured ? 'hidden' : 'block'}`}
-          />
+          <div 
+            ref={videoContainerRef} 
+            className={`w-full h-64 ${isCaptured ? 'hidden' : 'block'}`}
+          >
+            {/* Video element will be appended here by the useEffect */}
+          </div>
         )}
         
         <canvas 
