@@ -48,21 +48,20 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
         // Play the video immediately
         try {
           await videoRef.current.play();
+          setIsCapturing(true);
         } catch (playError) {
           console.error('Error playing video:', playError);
+          setCameraError(true);
           throw new Error('Failed to play video stream');
         }
-        
-        // Set capturing state only after video is successfully playing
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, dimensions:', 
-            videoRef.current?.videoWidth, 
-            'x', 
-            videoRef.current?.videoHeight);
-          setIsCapturing(true);
-        };
       } else {
-        throw new Error('Video element not available');
+        console.error("Video element reference is null");
+        setCameraError(true);
+        toast({
+          title: "Camera Error",
+          description: "Could not initialize video element. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error accessing webcam:', error);
@@ -72,6 +71,7 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
         description: "Please allow camera access to continue with facial verification.",
         variant: "destructive",
       });
+      onError(); // Notify parent component about the error
     }
   };
   
@@ -176,6 +176,17 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
       }
     };
   }, [cameraStream]);
+
+  // Automatically start webcam when component mounts
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      startWebcam();
+    }, 500);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
   
   return (
     <div className="flex flex-col items-center">
@@ -186,9 +197,13 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
               <div className="text-center p-4">
                 <CameraOff className="h-16 w-16 text-destructive mx-auto mb-2" />
                 <p className="text-sm text-destructive">Camera access denied</p>
+                <p className="text-xs mt-2">Please check your browser permissions and try again</p>
               </div>
             ) : (
-              <User className="h-16 w-16 text-muted-foreground/60" />
+              <div className="text-center">
+                <User className="h-16 w-16 text-muted-foreground/60 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground/60">Initializing camera...</p>
+              </div>
             )}
           </div>
         ) : (
@@ -223,10 +238,17 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
       </div>
       
       <div className="flex gap-2">
-        {!isCapturing && (
+        {!isCapturing && !cameraError && (
           <Button onClick={startWebcam} className="w-full">
             <Camera className="mr-2 h-4 w-4" />
             Start Camera
+          </Button>
+        )}
+        
+        {cameraError && (
+          <Button onClick={startWebcam} className="w-full">
+            <Camera className="mr-2 h-4 w-4" />
+            Retry Camera Access
           </Button>
         )}
         
