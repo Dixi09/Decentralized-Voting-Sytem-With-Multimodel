@@ -20,6 +20,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   // Generate a random 6-digit OTP on component mount
   useEffect(() => {
     generateOTP();
+    
+    // Cleanup timer on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -45,6 +47,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
       clearInterval(timerRef.current);
     }
     
+    // Use window.setInterval to ensure it works in browser context
     timerRef.current = window.setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -95,6 +98,31 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
     setOtp('');
   };
   
+  // Function to handle OTP change
+  const handleOTPChange = (value: string) => {
+    setOtp(value);
+    // Auto-verify when 6 digits are entered
+    if (value.length === 6) {
+      setTimeout(() => {
+        if (value === generatedOtp) {
+          toast({
+            title: "OTP Verified",
+            description: "Your identity has been verified successfully",
+          });
+          onVerified();
+        } else {
+          toast({
+            title: "Invalid OTP",
+            description: "The code you entered doesn't match. Please try again.",
+            variant: "destructive",
+          });
+          setOtp('');
+          onError();
+        }
+      }, 500);
+    }
+  };
+  
   return (
     <div className="flex flex-col items-center space-y-6">
       <div className="text-center space-y-2">
@@ -109,11 +137,17 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
       <InputOTP
         maxLength={6}
         value={otp}
-        onChange={(value) => setOtp(value)}
+        onChange={handleOTPChange}
+        autoFocus
         render={({ slots }) => (
-          <InputOTPGroup>
+          <InputOTPGroup className="gap-3">
             {slots.map((slot, index) => (
-              <InputOTPSlot key={index} {...slot} index={index} />
+              <InputOTPSlot 
+                key={index} 
+                {...slot} 
+                index={index}
+                className="w-12 h-12 text-lg border-2"
+              />
             ))}
           </InputOTPGroup>
         )}
