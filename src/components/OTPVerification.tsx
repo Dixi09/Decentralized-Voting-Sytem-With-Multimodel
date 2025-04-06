@@ -32,6 +32,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   const generateOTP = () => {
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(newOtp);
+    console.log("Generated OTP:", newOtp); // This helps for testing
     
     // Show the OTP in a toast notification (in a real app, this would be sent via SMS/email)
     toast({
@@ -101,6 +102,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   // Function to handle OTP change
   const handleOTPChange = (value: string) => {
     setOtp(value);
+    console.log("OTP changed:", value); // Log the OTP input for debugging
+    
     // Auto-verify when 6 digits are entered
     if (value.length === 6) {
       setTimeout(() => {
@@ -144,9 +147,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
             {slots.map((slot, index) => (
               <InputOTPSlot 
                 key={index} 
-                {...slot} 
                 index={index}
-                className="w-12 h-12 text-lg border-2"
+                className="w-12 h-12 text-lg border-2 cursor-text"
               />
             ))}
           </InputOTPGroup>
