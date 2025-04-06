@@ -47,7 +47,7 @@ const InputOTPSlot = React.forwardRef<
         isActive && "z-10 ring-2 ring-ring ring-offset-background",
         className
       )}
-      // Convert the props to lowercase attribute names for DOM elements
+      // Convert camelCase props to lowercase data-* attributes for DOM elements
       data-active={isActive || undefined}
       data-fake-caret={hasFakeCaret || undefined}
       {...props}
