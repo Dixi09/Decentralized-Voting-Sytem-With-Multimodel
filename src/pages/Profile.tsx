@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Shield, Edit, LogOut, Save } from 'lucide-react';
+import { Shield, Edit, LogOut, Save, Camera, Check, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
@@ -21,13 +21,47 @@ const Profile = () => {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPhoto, setIsChangingPhoto] = useState(false);
   const [editedName, setEditedName] = useState(user.name);
   const [editedEmail, setEditedEmail] = useState(user.email);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = () => {
     setIsEditing(true);
     setEditedName(user.name);
     setEditedEmail(user.email);
+  };
+
+  const handleProfilePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // In a real app, you would upload this file to your server or cloud storage
+    // For this demo, we'll simulate an upload with a delay
+    setIsChangingPhoto(true);
+    setIsLoading(true);
+    
+    setTimeout(() => {
+      // Create a local URL for the selected image
+      const imageUrl = URL.createObjectURL(file);
+      setUser({
+        ...user,
+        profileImage: imageUrl
+      });
+      setIsChangingPhoto(false);
+      setIsLoading(false);
+      
+      toast({
+        title: "Profile Photo Updated",
+        description: "Your profile photo has been successfully updated.",
+      });
+    }, 1500);
   };
 
   const handleSave = () => {
@@ -51,18 +85,24 @@ const Profile = () => {
       return;
     }
 
-    setUser({
-      ...user,
-      name: editedName,
-      email: editedEmail
-    });
+    setIsLoading(true);
     
-    setIsEditing(false);
-    
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been successfully updated.",
-    });
+    // Simulate API delay
+    setTimeout(() => {
+      setUser({
+        ...user,
+        name: editedName,
+        email: editedEmail
+      });
+      
+      setIsEditing(false);
+      setIsLoading(false);
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+    }, 1000);
   };
 
   const handleCancel = () => {
@@ -89,23 +129,71 @@ const Profile = () => {
           {/* Profile Summary Card */}
           <Card className="md:col-span-1">
             <CardHeader className="flex flex-col items-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarImage src={user.profileImage} alt={user.name} />
-                <AvatarFallback>
-                  {user.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative mb-4">
+                <Avatar className="h-24 w-24 cursor-pointer" onClick={handleProfilePhotoClick}>
+                  {isChangingPhoto ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <>
+                      <AvatarImage src={user.profileImage} alt={user.name} />
+                      <AvatarFallback>
+                        {user.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </>
+                  )}
+                </Avatar>
+                
+                {isEditing && (
+                  <div 
+                    className="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full cursor-pointer hover:bg-primary/80"
+                    onClick={handleProfilePhotoClick}
+                  >
+                    <Camera size={16} />
+                  </div>
+                )}
+                
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+              </div>
+              
               <CardTitle className="text-center">{user.name}</CardTitle>
               <p className="text-sm text-muted-foreground">{user.email}</p>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {isEditing ? (
                 <>
-                  <Button onClick={handleSave} variant="default" className="w-full flex items-center gap-2">
-                    <Save size={16} />
-                    Save Changes
+                  <Button 
+                    onClick={handleSave} 
+                    variant="default" 
+                    className="w-full flex items-center gap-2"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        Save Changes
+                      </>
+                    )}
                   </Button>
-                  <Button onClick={handleCancel} variant="outline" className="w-full">
+                  <Button 
+                    onClick={handleCancel} 
+                    variant="outline" 
+                    className="w-full flex items-center gap-2"
+                    disabled={isLoading}
+                  >
+                    <X size={16} />
                     Cancel
                   </Button>
                 </>

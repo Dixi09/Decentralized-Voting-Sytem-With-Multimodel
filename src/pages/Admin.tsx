@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, User, Users, Vote, Calendar, Plus, Trash2, Edit, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Shield, User, Users, Vote, Calendar, Plus, Trash2, Edit, Eye, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import VotingContract, { Election, Candidate, VoteTransaction } from '@/utils/VotingContract';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -20,8 +20,10 @@ const Admin = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewElectionForm, setShowNewElectionForm] = useState(false);
+  const [editingElection, setEditingElection] = useState<Election | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  // New election form state
   const [newElection, setNewElection] = useState({
     title: '',
     description: '',
@@ -30,21 +32,27 @@ const Admin = () => {
     candidates: [{ name: '', party: '' }]
   });
 
+  const [editElection, setEditElection] = useState({
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    candidates: [{ id: 0, name: '', party: '', voteCount: 0 }],
+    isActive: true
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
-        // Fetch elections
         const votingContract = VotingContract.getInstance();
         const electionList = await votingContract.getElections();
         setElections(electionList);
         
-        // Fetch transactions
         const transactionList = await votingContract.getVoteTransactions();
         setTransactions(transactionList);
         
-        // Mock users data - in a real app, this would come from your auth system
         setUsers([
           { id: 'user-123', name: 'John Doe', email: 'john@example.com', voterId: 'VID202504001', hasVoted: true, registrationDate: 'April 1, 2025' },
           { id: 'user-456', name: 'Jane Smith', email: 'jane@example.com', voterId: 'VID202504002', hasVoted: false, registrationDate: 'April 2, 2025' },
@@ -89,8 +97,32 @@ const Admin = () => {
     });
   };
 
+  const handleEditCandidateChange = (index: number, field: 'name' | 'party', value: string) => {
+    const updatedCandidates = [...editElection.candidates];
+    updatedCandidates[index][field] = value;
+    setEditElection({
+      ...editElection,
+      candidates: updatedCandidates
+    });
+  };
+
+  const handleAddEditCandidate = () => {
+    const highestId = Math.max(...editElection.candidates.map(c => c.id), 0);
+    setEditElection({
+      ...editElection,
+      candidates: [...editElection.candidates, { id: highestId + 1, name: '', party: '', voteCount: 0 }]
+    });
+  };
+
+  const handleRemoveEditCandidate = (index: number) => {
+    const updatedCandidates = editElection.candidates.filter((_, i) => i !== index);
+    setEditElection({
+      ...editElection,
+      candidates: updatedCandidates
+    });
+  };
+
   const handleCreateElection = () => {
-    // Validate form
     if (!newElection.title || !newElection.description || !newElection.startDate || !newElection.endDate) {
       toast({
         title: "Missing Information",
@@ -109,40 +141,132 @@ const Admin = () => {
       return;
     }
 
-    // Create a new election object
-    const newElectionData: Election = {
-      id: elections.length + 1,
-      title: newElection.title,
-      description: newElection.description,
-      startDate: new Date(newElection.startDate),
-      endDate: new Date(newElection.endDate),
-      candidates: newElection.candidates.map((c, index) => ({
-        id: index + 1,
-        name: c.name,
-        party: c.party,
-        voteCount: 0
-      })),
-      isActive: true
-    };
+    setIsProcessing(true);
+    
+    setTimeout(() => {
+      const newElectionData: Election = {
+        id: elections.length + 1,
+        title: newElection.title,
+        description: newElection.description,
+        startDate: new Date(newElection.startDate),
+        endDate: new Date(newElection.endDate),
+        candidates: newElection.candidates.map((c, index) => ({
+          id: index + 1,
+          name: c.name,
+          party: c.party,
+          voteCount: 0
+        })),
+        isActive: true
+      };
 
-    // Add to elections list
-    setElections([...elections, newElectionData]);
+      setElections([...elections, newElectionData]);
+      
+      setNewElection({
+        title: '',
+        description: '',
+        startDate: '',
+        endDate: '',
+        candidates: [{ name: '', party: '' }]
+      });
+      
+      setShowNewElectionForm(false);
+      setIsProcessing(false);
+      
+      toast({
+        title: "Election Created",
+        description: "The new election has been successfully created.",
+      });
+    }, 1000);
+  };
+
+  const handleOpenEditDialog = (election: Election) => {
+    setEditingElection(election);
     
-    // Reset form
-    setNewElection({
-      title: '',
-      description: '',
-      startDate: '',
-      endDate: '',
-      candidates: [{ name: '', party: '' }]
+    const formatDateForInput = (date: Date) => {
+      const d = new Date(date);
+      return d.toISOString().split('T')[0];
+    };
+    
+    setEditElection({
+      title: election.title,
+      description: election.description,
+      startDate: formatDateForInput(election.startDate),
+      endDate: formatDateForInput(election.endDate),
+      candidates: [...election.candidates],
+      isActive: election.isActive
     });
     
-    setShowNewElectionForm(false);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateElection = () => {
+    if (!editElection.title || !editElection.description || !editElection.startDate || !editElection.endDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editElection.candidates.some(c => !c.name || !c.party)) {
+      toast({
+        title: "Invalid Candidates",
+        description: "Please fill all candidate information",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    toast({
-      title: "Election Created",
-      description: "The new election has been successfully created.",
-    });
+    if (!editingElection) return;
+    
+    setIsProcessing(true);
+    
+    setTimeout(() => {
+      const updatedElections = elections.map(e => 
+        e.id === editingElection.id 
+          ? {
+              ...e,
+              title: editElection.title,
+              description: editElection.description,
+              startDate: new Date(editElection.startDate),
+              endDate: new Date(editElection.endDate),
+              candidates: editElection.candidates,
+              isActive: editElection.isActive
+            } 
+          : e
+      );
+      
+      setElections(updatedElections);
+      setIsEditDialogOpen(false);
+      setEditingElection(null);
+      setIsProcessing(false);
+      
+      toast({
+        title: "Election Updated",
+        description: "The election has been successfully updated.",
+      });
+    }, 1000);
+  };
+
+  const handleToggleElectionStatus = (election: Election) => {
+    setIsProcessing(true);
+    
+    setTimeout(() => {
+      const updatedElections = elections.map(e => 
+        e.id === election.id 
+          ? { ...e, isActive: !e.isActive } 
+          : e
+      );
+      
+      setElections(updatedElections);
+      setIsProcessing(false);
+      
+      toast({
+        title: election.isActive ? "Election Deactivated" : "Election Activated",
+        description: `The election has been ${election.isActive ? "deactivated" : "activated"} successfully.`,
+      });
+    }, 1000);
   };
 
   const formatDate = (date: Date) => {
@@ -182,7 +306,10 @@ const Admin = () => {
           <TabsContent value="elections">
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-xl font-semibold">Manage Elections</h2>
-              <Button onClick={() => setShowNewElectionForm(!showNewElectionForm)}>
+              <Button 
+                onClick={() => setShowNewElectionForm(!showNewElectionForm)}
+                disabled={isProcessing}
+              >
                 {showNewElectionForm ? "Cancel" : "Create New Election"}
               </Button>
             </div>
@@ -203,6 +330,7 @@ const Admin = () => {
                           value={newElection.title}
                           onChange={(e) => setNewElection({...newElection, title: e.target.value})}
                           placeholder="Enter election title"
+                          disabled={isProcessing}
                         />
                       </div>
                       <div className="space-y-2">
@@ -212,6 +340,7 @@ const Admin = () => {
                           value={newElection.description}
                           onChange={(e) => setNewElection({...newElection, description: e.target.value})}
                           placeholder="Enter election description"
+                          disabled={isProcessing}
                         />
                       </div>
                     </div>
@@ -224,6 +353,7 @@ const Admin = () => {
                           type="date"
                           value={newElection.startDate}
                           onChange={(e) => setNewElection({...newElection, startDate: e.target.value})}
+                          disabled={isProcessing}
                         />
                       </div>
                       <div className="space-y-2">
@@ -233,6 +363,7 @@ const Admin = () => {
                           type="date"
                           value={newElection.endDate}
                           onChange={(e) => setNewElection({...newElection, endDate: e.target.value})}
+                          disabled={isProcessing}
                         />
                       </div>
                     </div>
@@ -244,6 +375,7 @@ const Admin = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={handleAddCandidate}
+                          disabled={isProcessing}
                         >
                           <Plus className="h-4 w-4 mr-1" /> Add Candidate
                         </Button>
@@ -256,6 +388,7 @@ const Admin = () => {
                               placeholder="Candidate Name"
                               value={candidate.name}
                               onChange={(e) => handleCandidateChange(index, 'name', e.target.value)}
+                              disabled={isProcessing}
                             />
                           </div>
                           <div className="col-span-5">
@@ -263,6 +396,7 @@ const Admin = () => {
                               placeholder="Party Affiliation"
                               value={candidate.party}
                               onChange={(e) => handleCandidateChange(index, 'party', e.target.value)}
+                              disabled={isProcessing}
                             />
                           </div>
                           <div className="col-span-2 flex justify-end">
@@ -270,7 +404,7 @@ const Admin = () => {
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleRemoveCandidate(index)}
-                              disabled={newElection.candidates.length === 1}
+                              disabled={newElection.candidates.length === 1 || isProcessing}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -279,8 +413,19 @@ const Admin = () => {
                       ))}
                     </div>
                     
-                    <Button className="w-full" onClick={handleCreateElection}>
-                      Create Election
+                    <Button 
+                      className="w-full" 
+                      onClick={handleCreateElection} 
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Create Election"
+                      )}
                     </Button>
                   </div>
                 </CardContent>
@@ -314,11 +459,25 @@ const Admin = () => {
                           <CardDescription>{election.description}</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleOpenEditDialog(election)}
+                            disabled={isProcessing}
+                          >
                             <Edit className="h-4 w-4 mr-1" /> Edit
                           </Button>
-                          <Button size="sm" variant={election.isActive ? "destructive" : "default"}>
-                            {election.isActive ? "Deactivate" : "Activate"}
+                          <Button 
+                            size="sm" 
+                            variant={election.isActive ? "destructive" : "default"}
+                            onClick={() => handleToggleElectionStatus(election)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              election.isActive ? "Deactivate" : "Activate"
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -499,6 +658,165 @@ const Admin = () => {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Election</DialogTitle>
+              <DialogDescription>
+                Make changes to the election details below.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Election Title</Label>
+                  <Input 
+                    id="edit-title" 
+                    value={editElection.title}
+                    onChange={(e) => setEditElection({...editElection, title: e.target.value})}
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Input 
+                    id="edit-description" 
+                    value={editElection.description}
+                    onChange={(e) => setEditElection({...editElection, description: e.target.value})}
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-startDate">Start Date</Label>
+                  <Input 
+                    id="edit-startDate" 
+                    type="date"
+                    value={editElection.startDate}
+                    onChange={(e) => setEditElection({...editElection, startDate: e.target.value})}
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-endDate">End Date</Label>
+                  <Input 
+                    id="edit-endDate" 
+                    type="date"
+                    value={editElection.endDate}
+                    onChange={(e) => setEditElection({...editElection, endDate: e.target.value})}
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Candidates</Label>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleAddEditCandidate}
+                    disabled={isProcessing}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Candidate
+                  </Button>
+                </div>
+                
+                {editElection.candidates.map((candidate, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded border">
+                    <div className="col-span-5">
+                      <Input 
+                        placeholder="Candidate Name"
+                        value={candidate.name}
+                        onChange={(e) => handleEditCandidateChange(index, 'name', e.target.value)}
+                        disabled={isProcessing}
+                      />
+                    </div>
+                    <div className="col-span-5">
+                      <Input 
+                        placeholder="Party Affiliation"
+                        value={candidate.party}
+                        onChange={(e) => handleEditCandidateChange(index, 'party', e.target.value)}
+                        disabled={isProcessing}
+                      />
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleRemoveEditCandidate(index)}
+                        disabled={editElection.candidates.length === 1 || isProcessing}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Election Status</Label>
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    type="button" 
+                    variant={editElection.isActive ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setEditElection({...editElection, isActive: true})}
+                    disabled={isProcessing}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Active
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant={!editElection.isActive ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setEditElection({...editElection, isActive: false})}
+                    disabled={isProcessing}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Inactive
+                  </Button>
+                </div>
+                {!editElection.isActive && (
+                  <div className="mt-2 flex items-start p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-yellow-700">
+                      Deactivating an election will prevent voters from casting new votes, but existing votes will be preserved.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditDialogOpen(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdateElection}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
