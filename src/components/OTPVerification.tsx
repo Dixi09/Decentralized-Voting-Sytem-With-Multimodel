@@ -17,7 +17,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   const [countdown, setCountdown] = useState(30);
   const timerRef = useRef<number | null>(null);
   
-  // Generate a random 6-digit OTP on component mount
+  // Generate a random 4-digit OTP on component mount
   useEffect(() => {
     generateOTP();
     
@@ -30,7 +30,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   }, []);
   
   const generateOTP = () => {
-    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate 4-digit OTP
+    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(newOtp);
     console.log("Generated OTP:", newOtp); // This helps for testing
     
@@ -62,10 +63,10 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   };
   
   const handleVerify = () => {
-    if (otp.length < 6) {
+    if (otp.length < 4) {
       toast({
         title: "Incomplete OTP",
-        description: "Please enter the complete 6-digit code",
+        description: "Please enter the complete 4-digit code",
         variant: "destructive",
       });
       return;
@@ -104,8 +105,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
     setOtp(value);
     console.log("OTP changed:", value); // Log the OTP input for debugging
     
-    // Auto-verify when 6 digits are entered
-    if (value.length === 6) {
+    // Auto-verify when 4 digits are entered
+    if (value.length === 4) {
       setTimeout(() => {
         if (value === generatedOtp) {
           toast({
@@ -130,7 +131,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
     <div className="flex flex-col items-center space-y-6">
       <div className="text-center space-y-2">
         <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code sent to your registered device
+          Enter the 4-digit code sent to your registered device
         </p>
         <p className="text-xs text-muted-foreground">
           (For demo purposes, the OTP is shown in a notification)
@@ -138,7 +139,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
       </div>
       
       <InputOTP
-        maxLength={6}
+        maxLength={4}
         value={otp}
         onChange={handleOTPChange}
         autoFocus
@@ -148,7 +149,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
               <InputOTPSlot 
                 key={index} 
                 index={index}
-                className="w-12 h-12 text-lg border-2 cursor-text"
+                className="w-14 h-14 text-xl font-bold border-2 cursor-text"
               />
             ))}
           </InputOTPGroup>
@@ -158,7 +159,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
       <div className="flex flex-col w-full gap-2">
         <Button 
           onClick={handleVerify} 
-          disabled={otp.length < 6 || isVerifying}
+          disabled={otp.length < 4 || isVerifying}
           className="w-full"
         >
           {isVerifying ? "Verifying..." : "Verify OTP"}
