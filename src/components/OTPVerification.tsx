@@ -15,7 +15,9 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(30);
+  const [autoFill, setAutoFill] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const autoFillTimerRef = useRef<number | null>(null);
   
   // Generate a random 4-digit OTP on component mount
   useEffect(() => {
@@ -26,14 +28,49 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (autoFillTimerRef.current) {
+        clearTimeout(autoFillTimerRef.current);
+      }
     };
   }, []);
+  
+  // Watch for generatedOTP and automatically fill it in after a delay
+  useEffect(() => {
+    if (generatedOtp && !autoFill) {
+      // Auto-fill after 1.5 seconds to give user time to see the OTP
+      autoFillTimerRef.current = window.setTimeout(() => {
+        setOtp(generatedOtp);
+        setAutoFill(true);
+      }, 1500);
+    }
+    
+    return () => {
+      if (autoFillTimerRef.current) {
+        clearTimeout(autoFillTimerRef.current);
+      }
+    };
+  }, [generatedOtp]);
+  
+  // Automatically verify when OTP is filled via auto-fill
+  useEffect(() => {
+    if (autoFill && otp === generatedOtp) {
+      // Slight delay to show the auto-filled OTP before verification
+      const verifyTimer = window.setTimeout(() => {
+        handleVerify();
+      }, 1000);
+      
+      return () => clearTimeout(verifyTimer);
+    }
+  }, [otp, autoFill]);
   
   const generateOTP = () => {
     // Generate 4-digit OTP
     const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(newOtp);
     console.log("Generated OTP:", newOtp); // This helps for testing
+    
+    // Reset auto-fill state
+    setAutoFill(false);
     
     // Show the OTP in a toast notification (in a real app, this would be sent via SMS/email)
     toast({
@@ -104,8 +141,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   const handleOTPChange = (value: string) => {
     setOtp(value);
     
-    // Auto-verify when 4 digits are entered
-    if (value.length === 4) {
+    // Auto-verify when 4 digits are entered manually (not by auto-fill)
+    if (value.length === 4 && !autoFill) {
       setTimeout(() => {
         if (value === generatedOtp) {
           toast({
@@ -133,8 +170,13 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
           Enter the 4-digit code sent to your registered device
         </p>
         <p className="text-xs text-muted-foreground">
-          (For demo purposes, the OTP is shown in a notification)
+          (For demo purposes, the OTP is shown in a notification and will auto-fill)
         </p>
+        {autoFill && (
+          <p className="text-xs text-green-600 font-medium animate-pulse">
+            Auto-filling OTP...
+          </p>
+        )}
       </div>
       
       <div className="w-full flex justify-center">
