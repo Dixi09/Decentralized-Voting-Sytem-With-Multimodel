@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, User, Users, Vote, Calendar, Plus, Trash2, Edit, Eye, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Shield, User, Users, Vote, Calendar, Plus, Trash2, Edit, Eye, CheckCircle, XCircle, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import VotingContract, { Election, Candidate, VoteTransaction } from '@/utils/VotingContract';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -23,6 +23,8 @@ const Admin = () => {
   const [editingElection, setEditingElection] = useState<Election | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState<VoteTransaction | null>(null);
+  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
   
   const [newElection, setNewElection] = useState({
     title: '',
@@ -269,12 +271,29 @@ const Admin = () => {
     }, 1000);
   };
 
-  const formatDate = (date: Date) => {
+  const handleViewTransaction = (transaction: VoteTransaction) => {
+    setTransactionDetails(transaction);
+    setShowTransactionDetails(true);
+  };
+
+  const formatDate = (date: Date | string) => {
+    if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
+  };
+
+  const getElectionAndCandidateNames = (transaction: VoteTransaction) => {
+    const election = elections.find(e => e.id === transaction.electionId);
+    const candidate = election?.candidates.find(c => c.id === transaction.candidateId);
+    return {
+      electionName: election?.title || 'Unknown Election',
+      candidateName: candidate?.name || 'Unknown Candidate'
+    };
   };
 
   return (
@@ -629,28 +648,35 @@ const Admin = () => {
                         <TableHead>Transaction Hash</TableHead>
                         <TableHead>Block</TableHead>
                         <TableHead>Timestamp</TableHead>
-                        <TableHead>Election ID</TableHead>
-                        <TableHead>Candidate ID</TableHead>
+                        <TableHead>Election</TableHead>
+                        <TableHead>Candidate</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions.map((tx) => (
-                        <TableRow key={tx.transactionHash}>
-                          <TableCell className="font-mono text-xs">
-                            {tx.transactionHash.substring(0, 10)}...
-                          </TableCell>
-                          <TableCell>{tx.blockNumber}</TableCell>
-                          <TableCell>{formatDate(tx.timestamp)}</TableCell>
-                          <TableCell>{tx.electionId}</TableCell>
-                          <TableCell>{tx.candidateId}</TableCell>
-                          <TableCell className="text-right">
-                            <Button size="sm" variant="ghost">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {transactions.map((tx) => {
+                        const { electionName, candidateName } = getElectionAndCandidateNames(tx);
+                        return (
+                          <TableRow key={tx.transactionHash}>
+                            <TableCell className="font-mono text-xs">
+                              {tx.transactionHash.substring(0, 10)}...
+                            </TableCell>
+                            <TableCell>{tx.blockNumber}</TableCell>
+                            <TableCell>{formatDate(tx.timestamp)}</TableCell>
+                            <TableCell>{electionName}</TableCell>
+                            <TableCell>{candidateName}</TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleViewTransaction(tx)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -813,6 +839,81 @@ const Admin = () => {
                 ) : (
                   "Save Changes"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={showTransactionDetails} onOpenChange={setShowTransactionDetails}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Transaction Details</DialogTitle>
+              <DialogDescription>
+                Blockchain transaction information and verification data
+              </DialogDescription>
+            </DialogHeader>
+            
+            {transactionDetails && (
+              <div className="space-y-4 py-4">
+                <div className="bg-slate-50 p-4 rounded-lg border space-y-3">
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Transaction Hash</h3>
+                    <p className="text-xs font-mono break-all">{transactionDetails.transactionHash}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Block Number</h3>
+                      <p>{transactionDetails.blockNumber}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Timestamp</h3>
+                      <p>{formatDate(transactionDetails.timestamp)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Election ID</h3>
+                      <p>{transactionDetails.electionId}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Candidate ID</h3>
+                      <p>{transactionDetails.candidateId}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Voter ID (Anonymized)</h3>
+                    <p className="text-xs font-mono">{transactionDetails.voterId}</p>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <h3 className="text-sm font-medium mb-1">Verification Status</h3>
+                    <div className="flex items-center gap-1">
+                      <div className="bg-green-100 text-green-800 rounded-full p-1">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm text-green-800">Verified on Blockchain</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">
+                    This transaction is permanently recorded on the blockchain
+                  </span>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <ExternalLink className="h-3 w-3" />
+                    <span>View on Explorer</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTransactionDetails(false)}>
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>

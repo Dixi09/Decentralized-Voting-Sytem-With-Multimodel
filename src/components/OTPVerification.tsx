@@ -142,7 +142,6 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
         maxLength={4}
         value={otp}
         onChange={handleOTPChange}
-        autoFocus
         render={({ slots }) => (
           <InputOTPGroup className="gap-3">
             {slots.map((slot, index) => (
