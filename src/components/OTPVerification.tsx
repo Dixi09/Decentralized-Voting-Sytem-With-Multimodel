@@ -103,7 +103,6 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
   // Function to handle OTP change
   const handleOTPChange = (value: string) => {
     setOtp(value);
-    console.log("OTP changed:", value); // Log the OTP input for debugging
     
     // Auto-verify when 4 digits are entered
     if (value.length === 4) {
@@ -138,22 +137,28 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
         </p>
       </div>
       
-      <InputOTP
-        maxLength={4}
-        value={otp}
-        onChange={handleOTPChange}
-        render={({ slots }) => (
-          <InputOTPGroup className="gap-3">
-            {slots.map((slot, index) => (
-              <InputOTPSlot 
-                key={index} 
-                index={index}
-                className="w-14 h-14 text-xl font-bold border-2 cursor-text"
-              />
-            ))}
-          </InputOTPGroup>
-        )}
-      />
+      <div className="w-full flex justify-center">
+        <InputOTP
+          maxLength={4}
+          value={otp}
+          onChange={handleOTPChange}
+          pattern="[0-9]*"
+          inputMode="numeric"
+          containerClassName="gap-3 items-center justify-center"
+          render={({ slots }) => (
+            <InputOTPGroup>
+              {slots.map((slot, index) => (
+                <InputOTPSlot 
+                  key={index} 
+                  index={index}
+                  aria-label={`Digit ${index + 1}`}
+                  className="w-14 h-14 text-xl font-bold border-2 cursor-text focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                />
+              ))}
+            </InputOTPGroup>
+          )}
+        />
+      </div>
       
       <div className="flex flex-col w-full gap-2">
         <Button 
