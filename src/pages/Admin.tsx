@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -912,4 +913,15 @@ const Admin = () => {
             )}
             
             <DialogFooter>
-              <Button variant="
+              <Button variant="outline" onClick={() => setShowTransactionDetails(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
+  );
+};
+
+export default Admin;
