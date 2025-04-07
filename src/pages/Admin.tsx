@@ -885,7 +885,7 @@ const Admin = () => {
                   
                   <div>
                     <h3 className="text-sm font-medium mb-1">Voter ID (Anonymized)</h3>
-                    <p className="text-xs font-mono">{transactionDetails.voterId}</p>
+                    <p className="text-xs font-mono">{transactionDetails.voter}</p>
                   </div>
                   
                   <div className="pt-2">
@@ -912,15 +912,4 @@ const Admin = () => {
             )}
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowTransactionDetails(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
-  );
-};
-
-export default Admin;
+              <Button variant="outline" onClick
