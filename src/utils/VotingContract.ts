@@ -2,6 +2,8 @@
 // Interface to interact with the Ethereum Smart Contract for voting
 // This would connect to a real smart contract in production
 
+import { storeVotingHistory } from "./supabaseStorage";
+
 export interface Candidate {
   id: number;
   name: string;
@@ -92,7 +94,7 @@ class VotingContract {
   
   public async castVote(userId: string, electionId: number, candidateId: number): Promise<VoteTransaction> {
     return new Promise((resolve, reject) => {
-      setTimeout(() => {
+      setTimeout(async () => {
         // Check if election exists and is active
         const election = this.elections.find(e => e.id === electionId);
         if (!election) {
@@ -137,6 +139,36 @@ class VotingContract {
         };
         
         this.transactions.push(transaction);
+        
+        // Store voting history in Supabase storage
+        try {
+          const votingHistoryData = {
+            election: {
+              id: electionId,
+              title: election.title
+            },
+            candidate: {
+              id: candidate.id,
+              name: candidate.name,
+              party: candidate.party,
+              currentVoteCount: candidate.voteCount
+            },
+            timestamp: new Date().toISOString(),
+            transaction: {
+              hash: transaction.transactionHash,
+              blockNumber: transaction.blockNumber
+            }
+          };
+          
+          // Store the voting history asynchronously (don't await)
+          storeVotingHistory(candidate.id, electionId, votingHistoryData)
+            .then(() => console.log('Voting history stored successfully'))
+            .catch(err => console.error('Failed to store voting history:', err));
+        } catch (error) {
+          console.error('Error storing voting history:', error);
+          // Don't reject the promise, just log the error as this is a non-critical operation
+        }
+        
         resolve(transaction);
       }, 1500); // Longer delay to simulate blockchain confirmation
     });
