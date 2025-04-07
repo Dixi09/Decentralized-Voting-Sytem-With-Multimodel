@@ -152,7 +152,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ onVerified, onError }
                   key={index} 
                   index={index}
                   aria-label={`Digit ${index + 1}`}
-                  className="w-14 h-14 text-xl font-bold border-2 cursor-text focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-14 h-14 text-xl font-bold border-2 cursor-text focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:border-primary"
                 />
               ))}
             </InputOTPGroup>
