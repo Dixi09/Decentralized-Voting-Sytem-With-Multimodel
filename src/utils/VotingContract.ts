@@ -145,10 +145,10 @@ class VotingContract {
           // Store voting history in Supabase
           try {
             // Store vote in database
-            await supabase.from('user_votes').insert({
-              user_id: userId,
-              election_id: electionId,
-              candidate_id: candidateId,
+            await supabase.from('votes').insert({
+              voter_id: userId,
+              election_id: electionId.toString(),
+              candidate_id: candidateId.toString(),
               transaction_hash: transaction.transactionHash
             });
 
@@ -201,10 +201,10 @@ class VotingContract {
     try {
       // Check in Supabase if the user has voted
       const { count, error } = await supabase
-        .from('user_votes')
+        .from('votes')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('election_id', electionId);
+        .eq('voter_id', userId)
+        .eq('election_id', electionId.toString());
       
       if (error) {
         console.error('Error checking vote status:', error);

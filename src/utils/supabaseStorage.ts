@@ -125,15 +125,15 @@ export async function listAllVotingHistory() {
 export async function getUserVotingHistory(userId: string) {
   try {
     const { data, error } = await supabase
-      .from('user_votes')
+      .from('votes')
       .select(`
         election_id,
         candidate_id,
         transaction_hash,
-        voted_at
+        created_at
       `)
-      .eq('user_id', userId)
-      .order('voted_at', { ascending: false });
+      .eq('voter_id', userId)
+      .order('created_at', { ascending: false });
     
     if (error) {
       throw error;
@@ -150,16 +150,16 @@ export async function getUserVotingHistory(userId: string) {
 export async function getAllVotes() {
   try {
     const { data, error } = await supabase
-      .from('user_votes')
+      .from('votes')
       .select(`
         id,
-        user_id,
+        voter_id,
         election_id,
         candidate_id,
-        voted_at,
+        created_at,
         transaction_hash
       `)
-      .order('voted_at', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (error) {
       throw error;
