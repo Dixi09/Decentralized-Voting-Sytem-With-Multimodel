@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -15,10 +16,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 interface UserProfile {
   id: string;
   full_name: string;
-  email: string;
-  voter_id: string;
-  registration_date: string;
-  avatar_url: string | null;
+  voter_id?: string;
+  registration_date?: string;
+  avatar_url?: string | null;
+  // Remove email field since it doesn't exist in the profiles table
+  // We'll use the user.email from the auth state instead
 }
 
 const Profile = () => {
@@ -42,7 +44,7 @@ const Profile = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, email, voter_id, registration_date, avatar_url')
+          .select('id, full_name, voter_id, registration_date, avatar_url') // Remove email from select query
           .eq('id', user.id)
           .single();
           
@@ -62,7 +64,7 @@ const Profile = () => {
     enabled: !!user,
   });
 
-  // Fetch user voting status - using the votes table instead of user_votes
+  // Fetch user voting status - using the votes table
   const { data: hasVoted } = useQuery({
     queryKey: ['userVotes', user?.id],
     queryFn: async (): Promise<boolean> => {
@@ -87,7 +89,7 @@ const Profile = () => {
 
   // Update user profile mutation
   const updateProfile = useMutation({
-    mutationFn: async (data: { full_name: string; email?: string }) => {
+    mutationFn: async (data: { full_name: string }) => {
       if (!user) throw new Error('User not authenticated');
       
       const { error } = await supabase
@@ -165,7 +167,7 @@ const Profile = () => {
   useEffect(() => {
     if (profile) {
       setEditedName(profile.full_name || '');
-      setEditedEmail(profile.email || user?.email || '');
+      setEditedEmail(user?.email || ''); // Get email from user auth object instead
     }
   }, [profile, user]);
 
