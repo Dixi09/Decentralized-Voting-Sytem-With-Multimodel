@@ -2,6 +2,7 @@
 // Interface to interact with the Ethereum Smart Contract for voting
 // This would connect to a real smart contract in production
 
+import { supabase } from "@/integrations/supabase/client";
 import { storeVotingHistory } from "./supabaseStorage";
 
 export interface Candidate {
@@ -95,81 +96,97 @@ class VotingContract {
   public async castVote(userId: string, electionId: number, candidateId: number): Promise<VoteTransaction> {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
-        // Check if election exists and is active
-        const election = this.elections.find(e => e.id === electionId);
-        if (!election) {
-          reject(new Error("Election not found"));
-          return;
-        }
-        
-        if (!election.isActive) {
-          reject(new Error("Election is not active"));
-          return;
-        }
-        
-        // Check if candidate exists
-        const candidate = election.candidates.find(c => c.id === candidateId);
-        if (!candidate) {
-          reject(new Error("Candidate not found"));
-          return;
-        }
-        
-        // Check if user has already voted in this election
-        if (!this.hasVoted[userId]) {
-          this.hasVoted[userId] = new Set();
-        }
-        
-        if (this.hasVoted[userId].has(electionId)) {
-          reject(new Error("You have already cast your vote in this election"));
-          return;
-        }
-        
-        // Record the vote
-        candidate.voteCount++;
-        this.hasVoted[userId].add(electionId);
-        
-        // Create transaction record
-        const transaction: VoteTransaction = {
-          transactionHash: `0x${Math.random().toString(16).substring(2, 42)}`,
-          blockNumber: Math.floor(Math.random() * 1000000),
-          timestamp: new Date(),
-          voter: userId,
-          electionId,
-          candidateId
-        };
-        
-        this.transactions.push(transaction);
-        
-        // Store voting history in Supabase storage
         try {
-          const votingHistoryData = {
-            election: {
-              id: electionId,
-              title: election.title
-            },
-            candidate: {
-              id: candidate.id,
-              name: candidate.name,
-              party: candidate.party,
-              currentVoteCount: candidate.voteCount
-            },
-            timestamp: new Date().toISOString(),
-            transaction: {
-              hash: transaction.transactionHash,
-              blockNumber: transaction.blockNumber
-            }
+          // Check if election exists and is active
+          const election = this.elections.find(e => e.id === electionId);
+          if (!election) {
+            reject(new Error("Election not found"));
+            return;
+          }
+          
+          if (!election.isActive) {
+            reject(new Error("Election is not active"));
+            return;
+          }
+          
+          // Check if candidate exists
+          const candidate = election.candidates.find(c => c.id === candidateId);
+          if (!candidate) {
+            reject(new Error("Candidate not found"));
+            return;
+          }
+          
+          // Check if user has already voted in this election
+          if (!this.hasVoted[userId]) {
+            this.hasVoted[userId] = new Set();
+          }
+          
+          if (this.hasVoted[userId].has(electionId)) {
+            reject(new Error("You have already cast your vote in this election"));
+            return;
+          }
+          
+          // Record the vote
+          candidate.voteCount++;
+          this.hasVoted[userId].add(electionId);
+          
+          // Create transaction record
+          const transaction: VoteTransaction = {
+            transactionHash: `0x${Math.random().toString(16).substring(2, 42)}`,
+            blockNumber: Math.floor(Math.random() * 1000000),
+            timestamp: new Date(),
+            voter: userId,
+            electionId,
+            candidateId
           };
           
-          // Store the voting history asynchronously (don't await)
-          storeVotingHistory(candidate.id, electionId, votingHistoryData)
-            .then(() => console.log('Voting history stored successfully'))
-            .catch(err => console.error('Failed to store voting history:', err));
+          this.transactions.push(transaction);
+          
+          // Store voting history in Supabase
+          try {
+            // Store vote in database
+            await supabase.from('user_votes').insert({
+              user_id: userId,
+              election_id: electionId,
+              candidate_id: candidateId,
+              transaction_hash: transaction.transactionHash
+            });
+
+            // Store voting history in Supabase storage
+            const votingHistoryData = {
+              election: {
+                id: electionId,
+                title: election.title
+              },
+              candidate: {
+                id: candidate.id,
+                name: candidate.name,
+                party: candidate.party,
+                currentVoteCount: candidate.voteCount
+              },
+              timestamp: new Date().toISOString(),
+              transaction: {
+                hash: transaction.transactionHash,
+                blockNumber: transaction.blockNumber
+              },
+              voter: {
+                id: userId
+              }
+            };
+            
+            // Store the voting history asynchronously (don't await)
+            storeVotingHistory(candidate.id, electionId, votingHistoryData)
+              .then(() => console.log('Voting history stored successfully'))
+              .catch(err => console.error('Failed to store voting history:', err));
+          } catch (error) {
+            console.error('Error storing vote or voting history:', error);
+            // Don't reject the promise, just log the error as this is a non-critical operation
+          }
+          
+          resolve(transaction);
         } catch (error) {
-          console.error('Error storing voting history:', error);
-          // Don't reject the promise, just log the error as this is a non-critical operation
+          reject(error);
         }
-        
-        resolve(transaction);
       }, 1500); // Longer delay to simulate blockchain confirmation
     });
   }
@@ -181,11 +198,26 @@ class VotingContract {
   }
   
   public async hasUserVoted(userId: string, electionId: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(this.hasVoted[userId]?.has(electionId) || false);
-      }, 200);
-    });
+    try {
+      // Check in Supabase if the user has voted
+      const { count, error } = await supabase
+        .from('user_votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('election_id', electionId);
+      
+      if (error) {
+        console.error('Error checking vote status:', error);
+        // Fall back to local check if database query fails
+        return this.hasVoted[userId]?.has(electionId) || false;
+      }
+      
+      return count !== null && count > 0;
+    } catch (error) {
+      console.error('Error checking user vote status:', error);
+      // Fall back to local check
+      return this.hasVoted[userId]?.has(electionId) || false;
+    }
   }
 }
 

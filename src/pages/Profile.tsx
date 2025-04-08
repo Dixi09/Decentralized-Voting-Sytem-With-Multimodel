@@ -1,37 +1,168 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Shield, Edit, LogOut, Save, Camera, Check, X, Loader2 } from 'lucide-react';
+import { Shield, Edit, LogOut, Save, Camera, Loader2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  voter_id: string;
+  registration_date: string;
+  avatar_url: string | null;
+}
 
 const Profile = () => {
-  // Mock user data - in a real app, this would come from your auth system
-  const [user, setUser] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    voterId: 'VID2025042189',
-    registrationDate: 'April 1, 2025',
-    hasVoted: true,
-    profileImage: '/lovable-uploads/3b40358e-fcb4-4f00-a793-d500b39c474d.png'
-  });
-
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
-  const [editedName, setEditedName] = useState(user.name);
-  const [editedEmail, setEditedEmail] = useState(user.email);
-  const [isLoading, setIsLoading] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch user profile data
+  const { data: profile, isLoading: isLoadingProfile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async (): Promise<UserProfile | null> => {
+      if (!user) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, voter_id, registration_date, avatar_url')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user voting status
+  const { data: hasVoted } = useQuery({
+    queryKey: ['userVotes', user?.id],
+    queryFn: async (): Promise<boolean> => {
+      if (!user) return false;
+      
+      const { count, error } = await supabase
+        .from('user_votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Error fetching user votes:', error);
+        throw error;
+      }
+      
+      return count !== null && count > 0;
+    },
+    enabled: !!user,
+  });
+
+  // Update user profile mutation
+  const updateProfile = useMutation({
+    mutationFn: async (data: { full_name: string; email?: string }) => {
+      if (!user) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user.id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+      setIsEditing(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Upload profile photo mutation
+  const uploadProfilePhoto = useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error('User not authenticated');
+      
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+      
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL for the uploaded image
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+        
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: data.publicUrl })
+        .eq('id', user.id);
+        
+      if (updateError) throw updateError;
+      
+      return data.publicUrl;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      setIsChangingPhoto(false);
+      toast({
+        title: "Profile Photo Updated",
+        description: "Your profile photo has been successfully updated.",
+      });
+    },
+    onError: (error) => {
+      setIsChangingPhoto(false);
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update profile photo",
+        variant: "destructive",
+      });
+    }
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setEditedName(profile.full_name || '');
+      setEditedEmail(profile.email || user?.email || '');
+    }
+  }, [profile, user]);
+
   const handleEdit = () => {
     setIsEditing(true);
-    setEditedName(user.name);
-    setEditedEmail(user.email);
   };
 
   const handleProfilePhotoClick = () => {
@@ -42,83 +173,52 @@ const Profile = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // In a real app, you would upload this file to your server or cloud storage
-    // For this demo, we'll simulate an upload with a delay
     setIsChangingPhoto(true);
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      // Create a local URL for the selected image
-      const imageUrl = URL.createObjectURL(file);
-      setUser({
-        ...user,
-        profileImage: imageUrl
-      });
-      setIsChangingPhoto(false);
-      setIsLoading(false);
-      
-      toast({
-        title: "Profile Photo Updated",
-        description: "Your profile photo has been successfully updated.",
-      });
-    }, 1500);
+    uploadProfilePhoto.mutate(file);
   };
 
   const handleSave = () => {
-    if (!editedName.trim() || !editedEmail.trim()) {
+    if (!editedName.trim()) {
       toast({
         title: "Error",
-        description: "Name and email cannot be empty",
+        description: "Name cannot be empty",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editedEmail)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
-    // Simulate API delay
-    setTimeout(() => {
-      setUser({
-        ...user,
-        name: editedName,
-        email: editedEmail
-      });
-      
-      setIsEditing(false);
-      setIsLoading(false);
-      
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-    }, 1000);
+    updateProfile.mutate({ 
+      full_name: editedName 
+    });
   };
 
   const handleCancel = () => {
     setIsEditing(false);
+    // Reset to original values
+    if (profile) {
+      setEditedName(profile.full_name || '');
+      setEditedEmail(profile.email || user?.email || '');
+    }
   };
 
-  const handleSignOut = () => {
-    toast({
-      title: "Signed Out",
-      description: "You have been successfully signed out.",
-    });
-    // In a real app, this would redirect to login page
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1500);
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
+
+  if (isLoadingProfile) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-6 flex justify-center items-center min-h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -131,15 +231,15 @@ const Profile = () => {
             <CardHeader className="flex flex-col items-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24 cursor-pointer" onClick={handleProfilePhotoClick}>
-                  {isChangingPhoto ? (
+                  {isChangingPhoto || uploadProfilePhoto.isPending ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : (
                     <>
-                      <AvatarImage src={user.profileImage} alt={user.name} />
+                      <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || ''} />
                       <AvatarFallback>
-                        {user.name.split(' ').map(n => n[0]).join('')}
+                        {profile?.full_name?.split(' ').map(n => n[0]).join('') || user?.email?.charAt(0).toUpperCase() || '?'}
                       </AvatarFallback>
                     </>
                   )}
@@ -163,8 +263,8 @@ const Profile = () => {
                 />
               </div>
               
-              <CardTitle className="text-center">{user.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <CardTitle className="text-center">{profile?.full_name || 'Loading...'}</CardTitle>
+              <p className="text-sm text-muted-foreground">{user?.email || ''}</p>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {isEditing ? (
@@ -173,9 +273,9 @@ const Profile = () => {
                     onClick={handleSave} 
                     variant="default" 
                     className="w-full flex items-center gap-2"
-                    disabled={isLoading}
+                    disabled={updateProfile.isPending}
                   >
-                    {isLoading ? (
+                    {updateProfile.isPending ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
                         Saving...
@@ -191,7 +291,7 @@ const Profile = () => {
                     onClick={handleCancel} 
                     variant="outline" 
                     className="w-full flex items-center gap-2"
-                    disabled={isLoading}
+                    disabled={updateProfile.isPending}
                   >
                     <X size={16} />
                     Cancel
@@ -231,29 +331,37 @@ const Profile = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">Email Address (non-editable)</Label>
                     <Input 
                       id="email" 
                       type="email" 
                       value={editedEmail} 
-                      onChange={(e) => setEditedEmail(e.target.value)}
+                      disabled 
+                      className="bg-gray-100"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      To change your email address, please contact support.
+                    </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-between border-b pb-2">
                     <span className="text-muted-foreground">Voter ID</span>
-                    <span className="font-medium">{user.voterId}</span>
+                    <span className="font-medium">{profile?.voter_id || 'Not registered'}</span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
                     <span className="text-muted-foreground">Registration Date</span>
-                    <span className="font-medium">{user.registrationDate}</span>
+                    <span className="font-medium">
+                      {profile?.registration_date 
+                        ? new Date(profile.registration_date).toLocaleDateString() 
+                        : 'Not registered'}
+                    </span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
                     <span className="text-muted-foreground">Voting Status</span>
                     <span className="font-medium flex items-center gap-2">
-                      {user.hasVoted ? (
+                      {hasVoted ? (
                         <>
                           <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                           Voted

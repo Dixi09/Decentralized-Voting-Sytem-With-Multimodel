@@ -78,3 +78,96 @@ export async function listCandidateVotingHistory(candidateId: number) {
     return [];
   }
 }
+
+// Function to list all voting history files across all candidates
+export async function listAllVotingHistory() {
+  try {
+    const { data, error } = await supabase
+      .storage
+      .from('voting_history')
+      .list('candidates', {
+        sortBy: { column: 'name', order: 'asc' }
+      });
+    
+    if (error) {
+      console.error('Error listing all voting history:', error);
+      throw error;
+    }
+    
+    // Get all subdirectories (candidate folders)
+    const candidateFolders = data.filter(item => item.id.includes('/'));
+    const allHistories = [];
+    
+    // For each candidate folder, list the files
+    for (const folder of candidateFolders) {
+      const candidateId = folder.name;
+      const { data: candidateFiles, error: candidateError } = await supabase
+        .storage
+        .from('voting_history')
+        .list(`candidates/${candidateId}`);
+        
+      if (!candidateError && candidateFiles) {
+        allHistories.push(...candidateFiles.map(file => ({
+          ...file,
+          candidateId: parseInt(candidateId, 10)
+        })));
+      }
+    }
+    
+    return allHistories;
+  } catch (error) {
+    console.error('Failed to list all voting history:', error);
+    return [];
+  }
+}
+
+// Function to get voting history by user
+export async function getUserVotingHistory(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('user_votes')
+      .select(`
+        election_id,
+        candidate_id,
+        transaction_hash,
+        voted_at
+      `)
+      .eq('user_id', userId)
+      .order('voted_at', { ascending: false });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Failed to get user voting history:', error);
+    return [];
+  }
+}
+
+// Function to get all votes for analysis (admin only)
+export async function getAllVotes() {
+  try {
+    const { data, error } = await supabase
+      .from('user_votes')
+      .select(`
+        id,
+        user_id,
+        election_id,
+        candidate_id,
+        voted_at,
+        transaction_hash
+      `)
+      .order('voted_at', { ascending: false });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Failed to get all votes:', error);
+    return [];
+  }
+}
