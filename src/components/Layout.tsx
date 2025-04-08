@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Vote, BarChart, Users, Settings } from 'lucide-react';
+import { Shield, Vote, BarChart, Users, Settings, LogOut, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,14 +11,25 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { signOut, user } = useAuth();
   
+  // Updated navigation items with correct order based on user flow
   const navItems = [
-    { name: 'Home', path: '/', icon: Shield },
+    { name: 'Home', path: '/home', icon: Shield },
+    { name: 'Registration', path: '/registration', icon: FileText },
     { name: 'Vote', path: '/vote', icon: Vote },
     { name: 'Results', path: '/results', icon: BarChart },
     { name: 'Profile', path: '/profile', icon: Users },
-    { name: 'Admin', path: '/admin', icon: Settings },
   ];
+
+  // Only show admin for certain users (in a real app, this would check roles)
+  if (user) {
+    navItems.push({ name: 'Admin', path: '/admin', icon: Settings });
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -41,6 +53,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <span>{item.name}</span>
               </Link>
             ))}
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -58,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-50">
         <div className="grid grid-cols-5">
-          {navItems.map((item) => (
+          {navItems.slice(0, 5).map((item) => (
             <Link
               key={item.name}
               to={item.path}

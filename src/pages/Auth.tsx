@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,18 +33,13 @@ const AuthPage = () => {
   const [activeTab, setActiveTab] = useState<string>('login');
   const { signIn, signUp, isLoading, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // Parse return URL from query param
-  const searchParams = new URLSearchParams(location.search);
-  const returnTo = searchParams.get('returnTo') || '/';
-
-  // Redirect if already logged in
+  // Redirect if already logged in - to the home page
   useEffect(() => {
     if (user) {
-      navigate(returnTo, { replace: true });
+      navigate('/home');
     }
-  }, [user, navigate, returnTo]);
+  }, [user, navigate]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -68,7 +62,7 @@ const AuthPage = () => {
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       await signIn(data.email, data.password);
-      // Don't navigate here, let the useEffect handle it
+      // Redirect handled by useEffect
     } catch (error) {
       // Error is already handled by the auth hook
       console.error('Login failed:', error);
