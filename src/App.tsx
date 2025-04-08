@@ -25,13 +25,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Set the Profile page as the landing page */}
+            {/* Set the Profile page as the landing page for authenticated users */}
             <Route path="/" element={
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
             } />
-            <Route path="/index" element={<Index />} />
+            <Route path="/home" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/vote" element={
               <ProtectedRoute>

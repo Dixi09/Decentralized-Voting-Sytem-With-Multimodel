@@ -11,7 +11,8 @@ import {
   LockKeyhole, 
   BookOpen, 
   User,
-  Check 
+  Check,
+  Info
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 
@@ -96,54 +97,30 @@ const Home = () => {
         </div>
       </section>
       
+      {/* Added about project section */}
       <section className="py-12 bg-slate-50 dark:bg-slate-900">
         <div className="container px-4 mx-auto">
           <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-lg text-muted-foreground">
-              Our system combines facial recognition, two-factor authentication, and blockchain technology
-              to create a secure and transparent voting experience.
+            <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+              <Info className="h-6 w-6 text-primary" />
+              About The Project
+            </h2>
+            <p className="text-lg text-muted-foreground mb-6">
+              SecureVote Chain is a blockchain-based voting system designed to revolutionize electoral processes by providing security, transparency, and convenience.
             </p>
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                1
-              </div>
-              <h3 className="font-medium mb-2">Registration</h3>
-              <p className="text-sm text-muted-foreground">
-                Voters register with personal information and facial biometrics for identity verification.
+            <div className="prose dark:prose-invert max-w-none">
+              <p className="mb-4">
+                This project was created as part of a Bachelor of Engineering major project, aiming to solve common voting system issues like tampering, fraud, and accessibility. By leveraging blockchain and facial recognition technologies, we've created a system that ensures:
               </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                2
-              </div>
-              <h3 className="font-medium mb-2">Authentication</h3>
-              <p className="text-sm text-muted-foreground">
-                Multi-factor authentication with facial recognition and OTP verification.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                3
-              </div>
-              <h3 className="font-medium mb-2">Secure Voting</h3>
-              <p className="text-sm text-muted-foreground">
-                Voters cast encrypted votes that are processed and verified by the blockchain network.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                4
-              </div>
-              <h3 className="font-medium mb-2">Verification</h3>
-              <p className="text-sm text-muted-foreground">
-                All votes are recorded on a public blockchain ledger that can be independently verified.
+              <ul className="text-left list-disc pl-6 mb-6 space-y-2">
+                <li>Each voter can only vote once</li>
+                <li>Votes cannot be altered once cast</li>
+                <li>The entire voting process is transparent and verifiable</li>
+                <li>Personal data is kept secure and private</li>
+                <li>Voting results are calculated accurately and quickly</li>
+              </ul>
+              <p>
+                The project has been developed using Ethereum smart contracts for the blockchain component, TensorFlow for facial recognition, and a React-based frontend for a seamless user experience.
               </p>
             </div>
           </div>

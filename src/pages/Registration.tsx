@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { User, Camera, Mail, Phone, Home, Calendar } from 'lucide-react';
+import { User, Camera, Mail, Phone, Home, Calendar, FileCheck } from 'lucide-react';
 import Layout from '@/components/Layout';
+import StepIndicator from '@/components/vote/StepIndicator';
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -24,8 +25,16 @@ const Registration = () => {
     postalCode: '',
     dateOfBirth: '',
     idNumber: '',
-    selfieUploaded: false
+    selfieUploaded: false,
+    idUploaded: false
   });
+  
+  const steps = [
+    { id: 1, label: "Personal" },
+    { id: 2, label: "Address" },
+    { id: 3, label: "Identity" },
+    { id: 4, label: "Confirm" }
+  ];
   
   const updateFormData = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -34,14 +43,16 @@ const Registration = () => {
     }));
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'selfieUploaded' | 'idUploaded') => {
     const files = e.target.files;
     if (files && files.length > 0) {
       // In a real app, you would upload this file to a server
-      updateFormData('selfieUploaded', true);
+      updateFormData(fieldName, true);
       toast({
-        title: "Photo Uploaded",
-        description: "Your photo has been successfully uploaded.",
+        title: fieldName === 'selfieUploaded' ? "Photo Uploaded" : "ID Document Uploaded",
+        description: fieldName === 'selfieUploaded' ? 
+          "Your photo has been successfully uploaded." : 
+          "Your ID document has been successfully uploaded.",
       });
     }
   };
@@ -109,6 +120,15 @@ const Registration = () => {
         });
         return false;
       }
+      
+      if (!formData.idUploaded) {
+        toast({
+          title: "ID Document Required",
+          description: "Please upload your government ID document.",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
     
     return true;
@@ -138,34 +158,10 @@ const Registration = () => {
       setIsLoading(false);
       toast({
         title: "Registration Successful",
-        description: "Your account has been created. You can now login to vote.",
+        description: "Your voter registration has been completed. You can now access the voting system.",
       });
       navigate('/vote');
     }, 2000);
-  };
-  
-  const renderStepIndicator = () => {
-    return (
-      <div className="flex justify-between mb-8 w-full max-w-md mx-auto">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className={`step-item ${i === step ? 'active' : ''} ${i < step ? 'complete' : ''}`}>
-            <div className={`step ${i === step ? 'active' : ''} ${i < step ? 'complete' : ''}`}>
-              {i < step ? (
-                <User className="w-5 h-5" />
-              ) : (
-                i
-              )}
-            </div>
-            <p className="text-xs mt-1">
-              {i === 1 && "Personal"}
-              {i === 2 && "Address"}
-              {i === 3 && "Identity"}
-              {i === 4 && "Confirm"}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
   };
   
   const renderPersonalInfoStep = () => {
@@ -327,7 +323,7 @@ const Registration = () => {
               id="selfie"
               type="file"
               accept="image/*"
-              onChange={handleFileChange}
+              onChange={(e) => handleFileChange(e, 'selfieUploaded')}
               className="hidden"
             />
             <Button
@@ -342,6 +338,38 @@ const Registration = () => {
               {formData.selfieUploaded ? "Photo uploaded" : "No file chosen"}
             </p>
           </div>
+        </div>
+        
+        {/* Added ID document upload section */}
+        <div className="space-y-2">
+          <Label htmlFor="idDocument">Upload Government ID Document</Label>
+          <div className="border-2 border-dashed rounded-lg p-6 text-center">
+            <FileCheck className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm mb-2">
+              Upload a scan/photo of your government ID document
+            </p>
+            <Input
+              id="idDocument"
+              type="file"
+              accept="image/*,.pdf"
+              onChange={(e) => handleFileChange(e, 'idUploaded')}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('idDocument')?.click()}
+            >
+              Choose File
+            </Button>
+            <p className="text-xs mt-2 text-muted-foreground">
+              {formData.idUploaded ? "Document uploaded" : "No file chosen"}
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Accepted formats: JPG, PNG, PDF (max 5MB)
+          </p>
         </div>
       </div>
     );
@@ -383,10 +411,12 @@ const Registration = () => {
             <div>{formData.idNumber}</div>
             <div className="text-muted-foreground">Photo:</div>
             <div>{formData.selfieUploaded ? "Uploaded" : "Not uploaded"}</div>
+            <div className="text-muted-foreground">ID Document:</div>
+            <div>{formData.idUploaded ? "Uploaded" : "Not uploaded"}</div>
           </div>
         </div>
         
-        <div className="rounded-lg border p-4 bg-slate-50">
+        <div className="rounded-lg border p-4 bg-slate-100">
           <div className="flex items-start space-x-2">
             <div className="bg-primary/10 rounded-full p-1 mt-0.5">
               <User className="h-3 w-3 text-primary" />
@@ -419,45 +449,57 @@ const Registration = () => {
   
   return (
     <Layout>
-      <div className="max-w-lg mx-auto">
-        {renderStepIndicator()}
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">Voter Registration</h1>
+        <p className="text-center mb-6 text-muted-foreground">
+          Complete this registration to verify your identity and access the secure voting system
+        </p>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Voter Registration</CardTitle>
-            <CardDescription>
-              {step === 1 && "Enter your personal information"}
-              {step === 2 && "Provide your residential address"}
-              {step === 3 && "Verify your identity with government ID and a photo"}
-              {step === 4 && "Review and confirm your information"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {renderStep()}
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={handleBack}
-              disabled={step === 1}
-            >
-              Back
-            </Button>
-            
-            {step < 4 ? (
-              <Button onClick={handleNext}>
-                Next
-              </Button>
-            ) : (
+        <div className="max-w-lg mx-auto">
+          <StepIndicator currentStep={step} steps={steps} />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {step === 1 && "Personal Information"}
+                {step === 2 && "Residential Address"}
+                {step === 3 && "Identity Verification"}
+                {step === 4 && "Review and Submit"}
+              </CardTitle>
+              <CardDescription>
+                {step === 1 && "Enter your personal information"}
+                {step === 2 && "Provide your residential address"}
+                {step === 3 && "Verify your identity with government ID and a photo"}
+                {step === 4 && "Review and confirm your information"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderStep()}
+            </CardContent>
+            <CardFooter className="flex justify-between">
               <Button 
-                onClick={handleSubmit}
-                disabled={isLoading}
+                variant="outline" 
+                onClick={handleBack}
+                disabled={step === 1}
               >
-                {isLoading ? "Processing..." : "Complete Registration"}
+                Back
               </Button>
-            )}
-          </CardFooter>
-        </Card>
+              
+              {step < 4 ? (
+                <Button onClick={handleNext}>
+                  Next
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Processing..." : "Complete Registration"}
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </Layout>
   );

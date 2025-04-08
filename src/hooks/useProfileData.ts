@@ -17,6 +17,12 @@ export const useProfileData = () => {
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
+  const [votingDetails, setVotingDetails] = useState<{
+    electionName?: string;
+    candidateName?: string;
+    timestamp?: string;
+    transactionHash?: string;
+  } | null>(null);
   
   // Fetch user profile data
   const { data: profile, isLoading: isLoadingProfile } = useQuery({
@@ -47,28 +53,63 @@ export const useProfileData = () => {
     enabled: !!user,
   });
 
-  // Fetch user voting status - using the votes table
-  const { data: hasVoted } = useQuery({
-    queryKey: ['userVotes', user?.id],
-    queryFn: async (): Promise<boolean> => {
-      if (!user) return false;
+  // Fetch user voting status and details - using the votes table with joined data
+  const { data: voteData, isLoading: isLoadingVotes } = useQuery({
+    queryKey: ['userVoteDetails', user?.id],
+    queryFn: async () => {
+      if (!user) return { hasVoted: false, details: null };
       
       try {
-        const { count, error } = await supabase
+        // First check if user has voted
+        const { data: voteResult, error: voteError } = await supabase
           .from('votes')
-          .select('*', { count: 'exact', head: true })
-          .eq('voter_id', user.id);
+          .select(`
+            id, 
+            created_at, 
+            transaction_hash, 
+            election_id, 
+            candidate_id, 
+            elections!inner(title), 
+            candidates!inner(name)
+          `)
+          .eq('voter_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
           
-        if (error) throw error;
+        if (voteError) {
+          if (voteError.code === 'PGRST116') {
+            // No vote found
+            return { hasVoted: false, details: null };
+          }
+          throw voteError;
+        }
         
-        return count !== null && count > 0;
+        // Format vote details
+        const details = {
+          electionName: voteResult.elections?.title,
+          candidateName: voteResult.candidates?.name,
+          timestamp: voteResult.created_at,
+          transactionHash: voteResult.transaction_hash,
+        };
+        
+        return { hasVoted: true, details };
       } catch (error) {
         console.error('Error fetching user votes:', error);
-        return false;
+        return { hasVoted: false, details: null };
       }
     },
     enabled: !!user,
   });
+
+  // Set hasVoted and votingDetails from the query result
+  const hasVoted = voteData?.hasVoted || false;
+
+  useEffect(() => {
+    if (voteData?.details) {
+      setVotingDetails(voteData.details);
+    }
+  }, [voteData]);
 
   useEffect(() => {
     if (profile) {
@@ -81,6 +122,7 @@ export const useProfileData = () => {
     profile,
     isLoadingProfile,
     hasVoted,
+    votingDetails,
     isEditing,
     setIsEditing,
     isChangingPhoto, 

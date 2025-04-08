@@ -18,7 +18,8 @@ const Profile = () => {
     setIsChangingPhoto,
     editedName,
     setEditedName,
-    editedEmail
+    editedEmail,
+    votingDetails
   } = useProfileData();
 
   if (isLoadingProfile) {
@@ -58,6 +59,7 @@ const Profile = () => {
               setEditedName={setEditedName}
               editedEmail={editedEmail}
               hasVoted={hasVoted}
+              votingDetails={votingDetails}
             />
           </Card>
         </div>
