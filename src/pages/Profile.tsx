@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -16,11 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 interface UserProfile {
   id: string;
   full_name: string;
-  voter_id?: string;
-  registration_date?: string;
   avatar_url?: string | null;
-  // Remove email field since it doesn't exist in the profiles table
-  // We'll use the user.email from the auth state instead
 }
 
 const Profile = () => {
@@ -44,7 +39,7 @@ const Profile = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, voter_id, registration_date, avatar_url') // Remove email from select query
+          .select('id, full_name, avatar_url')
           .eq('id', user.id)
           .single();
           
@@ -167,7 +162,7 @@ const Profile = () => {
   useEffect(() => {
     if (profile) {
       setEditedName(profile.full_name || '');
-      setEditedEmail(user?.email || ''); // Get email from user auth object instead
+      setEditedEmail(user?.email || ''); // Get email from user auth object
     }
   }, [profile, user]);
 
@@ -207,7 +202,7 @@ const Profile = () => {
     // Reset to original values
     if (profile) {
       setEditedName(profile.full_name || '');
-      setEditedEmail(profile.email || user?.email || '');
+      setEditedEmail(user?.email || '');
     }
   };
 
@@ -218,6 +213,10 @@ const Profile = () => {
     } catch (error) {
       console.error('Sign out error:', error);
     }
+  };
+
+  const handleVoteNow = () => {
+    navigate('/vote');
   };
 
   if (isLoadingProfile) {
@@ -308,10 +307,19 @@ const Profile = () => {
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} variant="outline" className="w-full flex items-center gap-2">
-                  <Edit size={16} />
-                  Edit Profile
-                </Button>
+                <>
+                  <Button onClick={handleEdit} variant="outline" className="w-full flex items-center gap-2">
+                    <Edit size={16} />
+                    Edit Profile
+                  </Button>
+                  <Button 
+                    onClick={handleVoteNow} 
+                    variant="default" 
+                    className="w-full flex items-center gap-2"
+                  >
+                    Cast Your Vote
+                  </Button>
+                </>
               )}
               <Button 
                 variant="outline" 
@@ -357,18 +365,6 @@ const Profile = () => {
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Voter ID</span>
-                    <span className="font-medium">{profile?.voter_id || 'Not registered'}</span>
-                  </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Registration Date</span>
-                    <span className="font-medium">
-                      {profile?.registration_date 
-                        ? new Date(profile.registration_date).toLocaleDateString() 
-                        : 'Not registered'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b pb-2">
                     <span className="text-muted-foreground">Voting Status</span>
                     <span className="font-medium flex items-center gap-2">
                       {hasVoted ? (
@@ -390,6 +386,15 @@ const Profile = () => {
                       <Shield size={16} />
                       <span className="text-sm font-medium">Your vote is secured by blockchain technology</span>
                     </div>
+                    
+                    {!hasVoted && (
+                      <Button 
+                        className="mt-4 w-full" 
+                        onClick={handleVoteNow}
+                      >
+                        Cast Your Vote Now
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}

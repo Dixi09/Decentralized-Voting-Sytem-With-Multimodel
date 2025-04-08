@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,8 +32,20 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 const AuthPage = () => {
   const [activeTab, setActiveTab] = useState<string>('login');
-  const { signIn, signUp, isLoading } = useAuth();
+  const { signIn, signUp, isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Parse return URL from query param
+  const searchParams = new URLSearchParams(location.search);
+  const returnTo = searchParams.get('returnTo') || '/';
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate(returnTo, { replace: true });
+    }
+  }, [user, navigate, returnTo]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -56,7 +68,7 @@ const AuthPage = () => {
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       await signIn(data.email, data.password);
-      navigate('/');
+      // Don't navigate here, let the useEffect handle it
     } catch (error) {
       // Error is already handled by the auth hook
       console.error('Login failed:', error);
@@ -66,7 +78,7 @@ const AuthPage = () => {
   const onSignupSubmit = async (data: SignupFormValues) => {
     try {
       await signUp(data.email, data.password, data.fullName);
-      // Don't navigate yet, user needs to confirm email
+      // Sign up success, show message and switch to login
       setActiveTab('login');
       toast({
         title: "Check your email",
@@ -272,6 +284,12 @@ const AuthPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <div className="mt-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            For testing purposes, you can disable email confirmation in the Supabase dashboard.
+          </p>
+        </div>
       </div>
     </div>
   );

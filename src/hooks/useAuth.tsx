@@ -44,7 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your email for a confirmation link or try signing up again.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       if (error instanceof Error) {
         toast({
@@ -69,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             full_name: fullName,
           },
+          // Set this to true for auto-confirming email in development
+          emailRedirectTo: window.location.origin
         },
       });
       if (error) throw error;
