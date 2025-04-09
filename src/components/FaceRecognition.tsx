@@ -6,8 +6,9 @@ import CameraFeedback from '@/components/face-verification/CameraFeedback';
 import VerificationStatus from '@/components/face-verification/VerificationStatus';
 import ActionButtons from '@/components/face-verification/ActionButtons';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Camera } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 interface FaceRecognitionProps {
   onVerified: () => void;
@@ -72,16 +73,64 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     }
   }, [videoRef.current, videoContainerRef.current, isCapturing]);
   
-  // Show warning if user doesn't have a reference image
+  // Show information if user doesn't have a reference image
   if (!hasReferenceImage) {
     return (
-      <Alert variant="destructive" className="mb-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Registration Required</AlertTitle>
-        <AlertDescription>
-          You need to complete the registration process with a face image before using facial verification.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <Alert className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Face Registration Required</AlertTitle>
+          <AlertDescription>
+            You need to register your face for verification. Please take a clear photo of your face looking directly at the camera.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
+          {!isCapturing ? (
+            <CameraFeedback cameraError={cameraError} />
+          ) : (
+            <div 
+              ref={videoContainerRef} 
+              className={`w-full h-64 ${isCaptured ? 'hidden' : 'block'}`}
+            >
+              {/* Video element will be appended here by the useEffect */}
+            </div>
+          )}
+          
+          <canvas 
+            ref={canvasRef} 
+            className={`w-full h-64 object-cover ${isCaptured ? 'block' : 'hidden'}`}
+          />
+          
+          <VerificationStatus 
+            isVerifying={isVerifying} 
+            status={verificationStatus} 
+          />
+        </div>
+        
+        <div className="flex justify-center">
+          <Button 
+            onClick={handleCaptureImage}
+            disabled={!isCapturing || isCaptured || isVerifying}
+            className="flex items-center space-x-2"
+          >
+            <Camera className="h-4 w-4" />
+            <span>Register My Face</span>
+          </Button>
+        </div>
+        
+        <ActionButtons 
+          isCapturing={isCapturing}
+          isCaptured={isCaptured}
+          cameraError={cameraError}
+          isVerifying={isVerifying}
+          verificationStatus={verificationStatus}
+          onStartCamera={startWebcam}
+          onCaptureImage={handleCaptureImage}
+          onRetryCapture={retryCapture}
+          onStopCamera={stopWebcam}
+        />
+      </div>
     );
   }
   
