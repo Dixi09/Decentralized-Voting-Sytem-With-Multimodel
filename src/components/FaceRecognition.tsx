@@ -6,6 +6,8 @@ import CameraFeedback from '@/components/face-verification/CameraFeedback';
 import VerificationStatus from '@/components/face-verification/VerificationStatus';
 import ActionButtons from '@/components/face-verification/ActionButtons';
 import { toast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface FaceRecognitionProps {
   onVerified: () => void;
@@ -24,7 +26,8 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     isVerifying, 
     verificationStatus, 
     captureImage, 
-    retryCapture 
+    retryCapture,
+    hasReferenceImage
   } = useFaceVerification({ onVerified: () => {
     stopWebcam();
     onVerified();
@@ -69,6 +72,19 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     }
   }, [videoRef.current, videoContainerRef.current, isCapturing]);
   
+  // Show warning if user doesn't have a reference image
+  if (!hasReferenceImage) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Registration Required</AlertTitle>
+        <AlertDescription>
+          You need to complete the registration process with a face image before using facial verification.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
@@ -110,3 +126,4 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
 };
 
 export default FaceRecognition;
+
