@@ -21,12 +21,12 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
       if (!user?.id) return;
       
       try {
-        // Try to fetch the user's face from profile or registration data
+        // Try to fetch the user's face from the user_biometrics table
         const { data, error } = await supabase
           .from('user_biometrics')
           .select('face_image_url')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
           console.error('Error fetching user face image:', error);
@@ -195,4 +195,3 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
     hasReferenceImage: !!referenceImage
   };
 }
-

@@ -111,6 +111,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_biometrics: {
+        Row: {
+          created_at: string
+          face_image_url: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          face_image_url?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          face_image_url?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       votes: {
         Row: {
           candidate_id: string | null

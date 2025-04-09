@@ -126,4 +126,3 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
 };
 
 export default FaceRecognition;
-
