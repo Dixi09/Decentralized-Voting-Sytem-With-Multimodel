@@ -22,8 +22,9 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
       
       try {
         // Try to fetch the user's face from the user_biometrics table
+        // Use any type to bypass the TypeScript error until types are regenerated
         const { data, error } = await supabase
-          .from('user_biometrics')
+          .from('user_biometrics' as any)
           .select('face_image_url')
           .eq('user_id', user.id)
           .maybeSingle();
@@ -33,7 +34,7 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
           return;
         }
         
-        if (data?.face_image_url) {
+        if (data && data.face_image_url) {
           setReferenceImage(data.face_image_url);
           console.log('Loaded reference face image for comparison');
         } else {
