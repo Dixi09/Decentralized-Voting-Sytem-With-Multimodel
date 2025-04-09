@@ -73,7 +73,33 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     }
   }, [videoRef.current, videoContainerRef.current, isCapturing]);
   
-  // Show information if user doesn't have a reference image
+  // Common UI for both registration and verification
+  const renderCameraInterface = () => (
+    <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
+      {!isCapturing ? (
+        <CameraFeedback cameraError={cameraError} />
+      ) : (
+        <div 
+          ref={videoContainerRef} 
+          className={`w-full h-64 ${isCaptured ? 'hidden' : 'block'}`}
+        >
+          {/* Video element will be appended here by the useEffect */}
+        </div>
+      )}
+      
+      <canvas 
+        ref={canvasRef} 
+        className={`w-full h-64 object-cover ${isCaptured ? 'block' : 'hidden'}`}
+      />
+      
+      <VerificationStatus 
+        isVerifying={isVerifying} 
+        status={verificationStatus} 
+      />
+    </div>
+  );
+  
+  // Show information if user doesn't have a reference image (on registration page)
   if (!hasReferenceImage) {
     return (
       <div className="space-y-4">
@@ -85,28 +111,7 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
           </AlertDescription>
         </Alert>
         
-        <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
-          {!isCapturing ? (
-            <CameraFeedback cameraError={cameraError} />
-          ) : (
-            <div 
-              ref={videoContainerRef} 
-              className={`w-full h-64 ${isCaptured ? 'hidden' : 'block'}`}
-            >
-              {/* Video element will be appended here by the useEffect */}
-            </div>
-          )}
-          
-          <canvas 
-            ref={canvasRef} 
-            className={`w-full h-64 object-cover ${isCaptured ? 'block' : 'hidden'}`}
-          />
-          
-          <VerificationStatus 
-            isVerifying={isVerifying} 
-            status={verificationStatus} 
-          />
-        </div>
+        {renderCameraInterface()}
         
         <div className="flex justify-center">
           <Button 
@@ -114,7 +119,7 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
             disabled={!isCapturing || isCaptured || isVerifying}
             className="flex items-center space-x-2"
           >
-            <Camera className="h-4 w-4" />
+            <Camera className="h-4 w-4 mr-2" />
             <span>Register My Face</span>
           </Button>
         </div>
@@ -134,30 +139,10 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     );
   }
   
+  // Regular verification flow
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-full max-w-sm mb-4 overflow-hidden rounded-lg border bg-background">
-        {!isCapturing ? (
-          <CameraFeedback cameraError={cameraError} />
-        ) : (
-          <div 
-            ref={videoContainerRef} 
-            className={`w-full h-64 ${isCaptured ? 'hidden' : 'block'}`}
-          >
-            {/* Video element will be appended here by the useEffect */}
-          </div>
-        )}
-        
-        <canvas 
-          ref={canvasRef} 
-          className={`w-full h-64 object-cover ${isCaptured ? 'block' : 'hidden'}`}
-        />
-        
-        <VerificationStatus 
-          isVerifying={isVerifying} 
-          status={verificationStatus} 
-        />
-      </div>
+      {renderCameraInterface()}
       
       <ActionButtons 
         isCapturing={isCapturing}

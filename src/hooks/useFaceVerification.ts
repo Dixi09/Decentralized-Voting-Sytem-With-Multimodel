@@ -90,30 +90,67 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
     // let's save this captured image as the reference and allow verification
     if (!referenceImage && user) {
       try {
-        // Store the captured image as the reference image
-        const { error } = await supabase
+        console.log("Saving face image for user:", user.id);
+        
+        // First check if a record already exists
+        const { data: existingRecord } = await supabase
           .from('user_biometrics' as any)
-          .upsert({
-            user_id: user.id,
-            face_image_url: capturedImageData,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
           
-        if (error) {
-          console.error('Error storing reference face image:', error);
-          toast({
-            title: "Registration Error",
-            description: "Failed to save your face image. Please try again.",
-            variant: "destructive",
-          });
-          
-          setVerificationStatus('error');
-          setTimeout(() => {
-            setIsCaptured(false);
-            setIsVerifying(false);
-            setVerificationStatus('idle');
-          }, 2000);
-          return;
+        if (existingRecord) {
+          // Update existing record
+          const { error } = await supabase
+            .from('user_biometrics' as any)
+            .update({
+              face_image_url: capturedImageData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error updating face image:', error);
+            toast({
+              title: "Registration Error",
+              description: "Failed to save your face image. Please try again.",
+              variant: "destructive",
+            });
+            
+            setVerificationStatus('error');
+            setTimeout(() => {
+              setIsCaptured(false);
+              setIsVerifying(false);
+              setVerificationStatus('idle');
+            }, 2000);
+            return;
+          }
+        } else {
+          // Insert new record
+          const { error } = await supabase
+            .from('user_biometrics' as any)
+            .insert({
+              user_id: user.id,
+              face_image_url: capturedImageData,
+              updated_at: new Date().toISOString()
+            });
+            
+          if (error) {
+            console.error('Error storing reference face image:', error);
+            toast({
+              title: "Registration Error",
+              description: "Failed to save your face image. Please try again.",
+              variant: "destructive",
+            });
+            
+            setVerificationStatus('error');
+            setTimeout(() => {
+              setIsCaptured(false);
+              setIsVerifying(false);
+              setVerificationStatus('idle');
+            }, 2000);
+            return;
+          }
         }
         
         // Set the reference image locally too
