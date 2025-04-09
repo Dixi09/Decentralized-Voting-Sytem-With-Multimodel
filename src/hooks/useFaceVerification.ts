@@ -21,8 +21,9 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
       if (!user?.id) return;
       
       try {
+        console.log("Fetching user face image for user ID:", user.id);
+        
         // Try to fetch the user's face from the user_biometrics table
-        // Use any type to bypass the TypeScript error until types are regenerated
         const { data, error } = await supabase
           .from('user_biometrics' as any)
           .select('face_image_url')
@@ -35,7 +36,6 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
         }
         
         // Check if data exists and has the face_image_url property
-        // Type assertion is needed to bypass TypeScript error
         const faceImageUrl = data ? (data as any).face_image_url : null;
         if (faceImageUrl) {
           setReferenceImage(faceImageUrl);
@@ -93,13 +93,21 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
         console.log("Saving face image for user:", user.id);
         
         // First check if a record already exists
-        const { data: existingRecord } = await supabase
+        const { data: existingRecord, error: checkError } = await supabase
           .from('user_biometrics' as any)
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
           
+        if (checkError) {
+          console.error('Error checking existing record:', checkError);
+          throw checkError;
+        }
+        
+        let saveError = null;
+        
         if (existingRecord) {
+          console.log("Updating existing face image record");
           // Update existing record
           const { error } = await supabase
             .from('user_biometrics' as any)
@@ -109,23 +117,9 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
             })
             .eq('user_id', user.id);
             
-          if (error) {
-            console.error('Error updating face image:', error);
-            toast({
-              title: "Registration Error",
-              description: "Failed to save your face image. Please try again.",
-              variant: "destructive",
-            });
-            
-            setVerificationStatus('error');
-            setTimeout(() => {
-              setIsCaptured(false);
-              setIsVerifying(false);
-              setVerificationStatus('idle');
-            }, 2000);
-            return;
-          }
+          saveError = error;
         } else {
+          console.log("Creating new face image record");
           // Insert new record
           const { error } = await supabase
             .from('user_biometrics' as any)
@@ -135,22 +129,24 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
               updated_at: new Date().toISOString()
             });
             
-          if (error) {
-            console.error('Error storing reference face image:', error);
-            toast({
-              title: "Registration Error",
-              description: "Failed to save your face image. Please try again.",
-              variant: "destructive",
-            });
+          saveError = error;
+        }
             
-            setVerificationStatus('error');
-            setTimeout(() => {
-              setIsCaptured(false);
-              setIsVerifying(false);
-              setVerificationStatus('idle');
-            }, 2000);
-            return;
-          }
+        if (saveError) {
+          console.error('Error storing face image:', saveError);
+          toast({
+            title: "Registration Error",
+            description: "Failed to save your face image. Please try again.",
+            variant: "destructive",
+          });
+          
+          setVerificationStatus('error');
+          setTimeout(() => {
+            setIsCaptured(false);
+            setIsVerifying(false);
+            setVerificationStatus('idle');
+          }, 2000);
+          return;
         }
         
         // Set the reference image locally too

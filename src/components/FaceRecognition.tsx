@@ -19,6 +19,7 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [cameraInitialized, setCameraInitialized] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   
   // Use custom hooks to manage camera and face verification state
   const { videoRef, isCapturing, cameraError, startWebcam, stopWebcam } = useCamera({ onError });
@@ -39,26 +40,42 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
     captureImage(videoRef, canvasRef);
   };
 
+  // Start registration process
+  const startRegistration = () => {
+    setIsRegistering(true);
+    startWebcam().catch(err => {
+      console.error('Failed to start webcam for registration:', err);
+      toast({
+        title: "Camera Error",
+        description: "Failed to initialize camera. Please check your permissions and try again.",
+        variant: "destructive",
+      });
+    });
+  };
+
   // Better handling of camera initialization
   useEffect(() => {
-    // Start webcam when component mounts with a delay to ensure DOM is ready
-    const timeoutId = setTimeout(() => {
-      startWebcam().catch(err => {
-        console.error('Failed to start webcam:', err);
-        toast({
-          title: "Camera Error",
-          description: "Failed to initialize camera. Please check your permissions and try again.",
-          variant: "destructive",
+    // Auto-start webcam for verification when not registering, or registration has been confirmed
+    if (!isRegistering && hasReferenceImage) {
+      // Start webcam when component mounts with a delay to ensure DOM is ready
+      const timeoutId = setTimeout(() => {
+        startWebcam().catch(err => {
+          console.error('Failed to start webcam:', err);
+          toast({
+            title: "Camera Error",
+            description: "Failed to initialize camera. Please check your permissions and try again.",
+            variant: "destructive",
+          });
+          onError();
         });
-        onError();
-      });
-    }, 1500); // Increased delay for better reliability
-    
-    return () => {
-      clearTimeout(timeoutId);
-      stopWebcam(); // Ensure camera is stopped when component unmounts
-    };
-  }, []);
+      }, 1500); // Increased delay for better reliability
+      
+      return () => {
+        clearTimeout(timeoutId);
+        stopWebcam(); // Ensure camera is stopped when component unmounts
+      };
+    }
+  }, [hasReferenceImage, isRegistering]);
 
   // Ensure video is properly appended to the DOM
   useEffect(() => {
@@ -111,30 +128,44 @@ const FaceRecognition: React.FC<FaceRecognitionProps> = ({ onVerified, onError }
           </AlertDescription>
         </Alert>
         
-        {renderCameraInterface()}
-        
-        <div className="flex justify-center">
-          <Button 
-            onClick={handleCaptureImage}
-            disabled={!isCapturing || isCaptured || isVerifying}
-            className="flex items-center space-x-2"
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            <span>Register My Face</span>
-          </Button>
-        </div>
-        
-        <ActionButtons 
-          isCapturing={isCapturing}
-          isCaptured={isCaptured}
-          cameraError={cameraError}
-          isVerifying={isVerifying}
-          verificationStatus={verificationStatus}
-          onStartCamera={startWebcam}
-          onCaptureImage={handleCaptureImage}
-          onRetryCapture={retryCapture}
-          onStopCamera={stopWebcam}
-        />
+        {isRegistering ? (
+          <>
+            {renderCameraInterface()}
+            
+            <div className="flex justify-center">
+              <Button 
+                onClick={handleCaptureImage}
+                disabled={!isCapturing || isCaptured || isVerifying}
+                className="flex items-center space-x-2"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                <span>Register My Face</span>
+              </Button>
+            </div>
+            
+            <ActionButtons 
+              isCapturing={isCapturing}
+              isCaptured={isCaptured}
+              cameraError={cameraError}
+              isVerifying={isVerifying}
+              verificationStatus={verificationStatus}
+              onStartCamera={startWebcam}
+              onCaptureImage={handleCaptureImage}
+              onRetryCapture={retryCapture}
+              onStopCamera={stopWebcam}
+            />
+          </>
+        ) : (
+          <div className="flex flex-col items-center">
+            <Button
+              onClick={startRegistration}
+              className="flex items-center space-x-2"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              <span>Start Face Registration</span>
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
