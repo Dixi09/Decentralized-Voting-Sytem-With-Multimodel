@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -79,21 +78,7 @@ const Home = () => {
             </Card>
           </div>
           
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-lg overflow-hidden">
-              <img 
-                src="/lovable-uploads/3b40358e-fcb4-4f00-a793-d500b39c474d.png" 
-                alt="Secure Voting Process Flow" 
-                className="w-full"
-              />
-            </div>
-            <div className="mt-4 text-center">
-              <h3 className="text-lg font-medium mb-2">Complete Voting Process Flow</h3>
-              <p className="text-sm text-muted-foreground">
-                Our secure voting system follows a comprehensive multi-step verification process
-              </p>
-            </div>
-          </div>
+          {/* Removed voting process diagram section */}
         </div>
       </section>
       
