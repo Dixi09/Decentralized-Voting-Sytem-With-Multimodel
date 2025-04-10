@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,30 +20,38 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
       if (!user?.id) return;
       
       try {
-        console.log("Fetching user face image for user ID:", user.id);
-        
-        // Try to fetch the user's face from the user_biometrics table
         const { data, error } = await supabase
-          .from('user_biometrics' as any)
+          .from('user_biometrics')
           .select('face_image_url')
           .eq('user_id', user.id)
           .maybeSingle();
         
         if (error) {
           console.error('Error fetching user face image:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch your registered face image. Please try again later.",
+            variant: "destructive",
+          });
           return;
         }
         
-        // Check if data exists and has the face_image_url property
-        const faceImageUrl = data ? (data as any).face_image_url : null;
-        if (faceImageUrl) {
-          setReferenceImage(faceImageUrl);
-          console.log('Loaded reference face image for comparison');
+        if (data?.face_image_url) {
+          setReferenceImage(data.face_image_url);
         } else {
-          console.warn('No reference face image found for this user');
+          toast({
+            title: "Face Registration Required",
+            description: "You need to register your face before you can vote.",
+            variant: "destructive",
+          });
         }
       } catch (err) {
         console.error('Error in fetchUserFace:', err);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred. Please try again later.",
+          variant: "destructive",
+        });
       }
     };
     
@@ -54,7 +61,11 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
   // Capture image from webcam
   const captureImage = (videoRef: React.RefObject<HTMLVideoElement>, canvasRef: React.RefObject<HTMLCanvasElement>) => {
     if (!videoRef.current || !canvasRef.current) {
-      console.error('Video or canvas elements not available');
+      toast({
+        title: "Error",
+        description: "Camera elements not available. Please refresh the page.",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -63,11 +74,13 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
     const context = canvas.getContext('2d');
     
     if (!context) {
-      console.error('Could not get canvas context');
+      toast({
+        title: "Error",
+        description: "Could not initialize camera context. Please try again.",
+        variant: "destructive",
+      });
       return;
     }
-    
-    console.log('Capturing image from video:', video.videoWidth, 'x', video.videoHeight);
     
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth || 640;
@@ -84,128 +97,43 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
   
   // Verify facial image against the user's registered face
   const verifyFace = async (capturedImageData: string) => {
+    if (!referenceImage) {
+      toast({
+        title: "Face Not Registered",
+        description: "Please register your face first before attempting to vote.",
+        variant: "destructive",
+      });
+      setVerificationStatus('error');
+      setTimeout(() => {
+        setIsCaptured(false);
+        setIsVerifying(false);
+        setVerificationStatus('idle');
+      }, 2000);
+      return;
+    }
+
     setIsVerifying(true);
     
-    // For demonstration purposes, if we don't have a reference image,
-    // let's save this captured image as the reference and allow verification
-    if (!referenceImage && user) {
-      try {
-        console.log("Saving face image for user:", user.id);
-        
-        // First check if a record already exists
-        const { data: existingRecord, error: checkError } = await supabase
-          .from('user_biometrics' as any)
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-          
-        if (checkError) {
-          console.error('Error checking existing record:', checkError);
-          throw checkError;
-        }
-        
-        let saveError = null;
-        
-        if (existingRecord) {
-          console.log("Updating existing face image record");
-          // Update existing record
-          const { error } = await supabase
-            .from('user_biometrics' as any)
-            .update({
-              face_image_url: capturedImageData,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id);
-            
-          saveError = error;
-        } else {
-          console.log("Creating new face image record");
-          // Insert new record
-          const { error } = await supabase
-            .from('user_biometrics' as any)
-            .insert({
-              user_id: user.id,
-              face_image_url: capturedImageData,
-              updated_at: new Date().toISOString()
-            });
-            
-          saveError = error;
-        }
-            
-        if (saveError) {
-          console.error('Error storing face image:', saveError);
-          toast({
-            title: "Registration Error",
-            description: "Failed to save your face image. Please try again.",
-            variant: "destructive",
-          });
-          
-          setVerificationStatus('error');
-          setTimeout(() => {
-            setIsCaptured(false);
-            setIsVerifying(false);
-            setVerificationStatus('idle');
-          }, 2000);
-          return;
-        }
-        
-        // Set the reference image locally too
-        setReferenceImage(capturedImageData);
-        
+    try {
+      // In a real implementation, this would call a backend API for face comparison
+      const result = await simulateFaceComparison(capturedImageData, referenceImage);
+      
+      if (result.verified) {
+        setVerificationStatus('success');
         toast({
-          title: "Face Registered",
-          description: "Your face has been registered successfully. Proceeding with verification.",
+          title: "Face Verified",
+          description: "Your identity has been successfully verified.",
         });
         
-        // Then proceed with verification (which will now succeed since we just registered the face)
-      } catch (err) {
-        console.error('Error registering face image:', err);
-        setVerificationStatus('error');
+        // Call the onVerified callback after a short delay
         setTimeout(() => {
-          setIsCaptured(false);
-          setIsVerifying(false);
-          setVerificationStatus('idle');
-        }, 2000);
-        return;
-      }
-    }
-    
-    // Call the simulated API endpoint for verification
-    simulateFaceComparison(capturedImageData, referenceImage)
-      .then(result => {
-        if (result.verified) {
-          setVerificationStatus('success');
-          toast({
-            title: "Face Verified",
-            description: "Your identity has been successfully verified.",
-          });
-          
-          // Call the onVerified callback after a short delay
-          setTimeout(() => {
-            onVerified();
-          }, 1500);
-        } else {
-          setVerificationStatus('error');
-          toast({
-            title: "Verification Failed",
-            description: "Face doesn't match our records. Please try again.",
-            variant: "destructive",
-          });
-          
-          // Reset to try again
-          setTimeout(() => {
-            setIsCaptured(false);
-            setIsVerifying(false);
-            setVerificationStatus('idle');
-          }, 2000);
-        }
-      })
-      .catch(error => {
-        console.error('Face verification error:', error);
+          onVerified();
+        }, 1500);
+      } else {
         setVerificationStatus('error');
         toast({
-          title: "Verification Error",
-          description: "An error occurred during face verification. Please try again.",
+          title: "Verification Failed",
+          description: "Face doesn't match our records. Please try again.",
           variant: "destructive",
         });
         
@@ -215,36 +143,38 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
           setIsVerifying(false);
           setVerificationStatus('idle');
         }, 2000);
+      }
+    } catch (error) {
+      console.error('Face verification error:', error);
+      setVerificationStatus('error');
+      toast({
+        title: "Verification Error",
+        description: "An error occurred during face verification. Please try again.",
+        variant: "destructive",
       });
+      
+      // Reset to try again
+      setTimeout(() => {
+        setIsCaptured(false);
+        setIsVerifying(false);
+        setVerificationStatus('idle');
+      }, 2000);
+    }
   };
   
   // This function simulates a backend face comparison API
-  // In a real implementation, this would be an API call to a backend service
-  const simulateFaceComparison = async (capturedImage: string, referenceImage: string | null): Promise<{verified: boolean, confidence: number}> => {
+  const simulateFaceComparison = async (capturedImage: string, referenceImage: string): Promise<{verified: boolean, confidence: number}> => {
     return new Promise((resolve) => {
       // Simulate API delay
       setTimeout(() => {
-        // For demo purposes:
-        // If user has a reference image, use higher verification threshold (more secure)
-        // If no reference image, use the original 80% success rate for demo
-        if (referenceImage) {
-          // In a real implementation, this would use actual face comparison algorithms
-          // Here we're just checking if the user has completed registration (has a reference image)
-          // For demo, we'll use a 70% success rate to show some failed attempts
-          const isSuccess = Math.random() < 0.7;
-          resolve({ 
-            verified: isSuccess,
-            confidence: isSuccess ? 0.8 + Math.random() * 0.15 : 0.5 + Math.random() * 0.2
-          });
-        } else {
-          // Original demo behavior (80% success)
-          const isSuccess = Math.random() < 0.8;
-          resolve({ 
-            verified: isSuccess,
-            confidence: isSuccess ? 0.7 + Math.random() * 0.2 : 0.3 + Math.random() * 0.3
-          });
-        }
-      }, 3000);
+        // In a real implementation, this would use actual face comparison algorithms
+        // For demo purposes, we'll use a higher threshold (90%) to make it more secure
+        const isSuccess = Math.random() < 0.9;
+        resolve({ 
+          verified: isSuccess,
+          confidence: isSuccess ? 0.85 + Math.random() * 0.1 : 0.3 + Math.random() * 0.2
+        });
+      }, 2000);
     });
   };
   
