@@ -15,7 +15,7 @@ interface FaceRecognitionProps {
   className?: string;
 }
 
-export function FaceRecognition({ onVerified, className }: FaceRecognitionProps) {
+const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -156,4 +156,6 @@ export function FaceRecognition({ onVerified, className }: FaceRecognitionProps)
       )}
     </div>
   );
-}
+};
+
+export default FaceRecognition;

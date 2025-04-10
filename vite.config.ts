@@ -20,4 +20,20 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: [
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-select',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-label',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-toast',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-avatar',
+      'next-themes',
+      'sonner',
+      'input-otp'
+    ]
+  }
 }));
