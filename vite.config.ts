@@ -11,7 +11,9 @@ export default defineConfig(({ mode }) => ({
     open: true
   },
   plugins: [
-    react(),
+    react({
+      jsxImportSource: 'react'
+    }),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
@@ -21,6 +23,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client'
+    ],
     exclude: [
       '@radix-ui/react-tooltip',
       '@radix-ui/react-tabs',
