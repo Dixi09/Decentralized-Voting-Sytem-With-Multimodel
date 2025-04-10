@@ -167,8 +167,7 @@ export function useFaceVerification({ onVerified }: UseFaceVerificationProps) {
     return new Promise((resolve) => {
       // Simulate API delay
       setTimeout(() => {
-        // In a real implementation, this would use actual face comparison algorithms
-        // For demo purposes, we'll use a higher threshold (90%) to make it more secure
+        // Simulate face comparison with a 90% success rate
         const isSuccess = Math.random() < 0.9;
         resolve({ 
           verified: isSuccess,
