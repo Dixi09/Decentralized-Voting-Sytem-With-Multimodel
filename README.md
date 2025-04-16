@@ -5,7 +5,7 @@ A complete decentralized voting system that combines blockchain technology with 
 
 ## Project Overview
 
-SecureVote Chain is a Bachelor of Engineering (BE) major project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and biometric verification. The system provides:
+SecureVote Chain is a project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and biometric verification. The system provides:
 
 - Facial recognition for voter authentication
 - Two-factor authentication with OTP
@@ -158,9 +158,6 @@ python app.py
 - Integration with government ID verification
 - Improved accessibility features
 
-## License
-
-This project is for educational purposes as part of a Bachelor of Engineering major project.
 
 ## Contact
 
