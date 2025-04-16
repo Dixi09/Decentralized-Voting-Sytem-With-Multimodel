@@ -1,5 +1,5 @@
 
-# SecureVote Chain - Decentralized Voting System with Facial Recognition
+# SecureVote Chain - Decentralized Voting System with Multimodel.
 
 A complete decentralized voting system that combines blockchain technology with facial recognition for secure and transparent elections.
 
