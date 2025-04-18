@@ -1,13 +1,11 @@
 
-# SecureVote Chain - Decentralized Voting System with Facial Recognition
+# SecureVote Chain - Decentralized Voting System with Multimodel.
 
 A complete decentralized voting system that combines blockchain technology with facial recognition for secure and transparent elections.
 
-![Voting Process Flow](/public/lovable-uploads/3b40358e-fcb4-4f00-a793-d500b39c474d.png)
-
 ## Project Overview
 
-SecureVote Chain is a Bachelor of Engineering (BE) major project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and biometric verification. The system provides:
+SecureVote Chain is a project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and biometric verification. The system provides:
 
 - Facial recognition for voter authentication
 - Two-factor authentication with OTP
@@ -160,9 +158,6 @@ python app.py
 - Integration with government ID verification
 - Improved accessibility features
 
-## License
-
-This project is for educational purposes as part of a Bachelor of Engineering major project.
 
 ## Contact
 
