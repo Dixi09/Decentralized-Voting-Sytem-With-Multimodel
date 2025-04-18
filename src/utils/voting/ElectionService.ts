@@ -60,9 +60,9 @@ class ElectionService {
       startDate: new Date(),
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
       candidates: [
-        { id: 1, name: "Alice Johnson", party: "Progress Party", voteCount: 45 },
-        { id: 2, name: "Bob Smith", party: "Future Alliance", voteCount: 30 },
-        { id: 3, name: "Carol Williams", party: "Student Voice", voteCount: 25 }
+        { id: 1, name: "Candidate 1", party: "Party 1", voteCount: null },
+        { id: 2, name: "Candidate 2", party: "Party 2", voteCount: null },
+        { id: 3, name: "Candidate 3", party: "Party 3", voteCount: null}
       ],
       isActive: true
     },
@@ -73,8 +73,8 @@ class ElectionService {
       startDate: new Date(),
       endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
       candidates: [
-        { id: 1, name: "David Chen", party: "Tech Innovators", voteCount: 20 },
-        { id: 2, name: "Emma Davis", party: "Academic Excellence", voteCount: 35 }
+        { id: 1, name: "Candidate 1", party: "Tech Innovators", voteCount: null },
+        { id: 2, name: "Candidate 2", party: "Academic Excellence", voteCount: null}
       ],
       isActive: true
     }
