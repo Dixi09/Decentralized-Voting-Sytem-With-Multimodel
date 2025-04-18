@@ -60,9 +60,9 @@ class ElectionService {
       startDate: new Date(),
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
       candidates: [
-        { id: 1, name: "Candidate 1", party: "Party 1", voteCount: null },
-        { id: 2, name: "Candidate 2", party: "Party 2", voteCount: null },
-        { id: 3, name: "Candidate 3", party: "Party 3", voteCount: null}
+        { id: 1, name: "Candidate 1", party: "Party 1", voteCount: 10},
+        { id: 2, name: "Candidate 2", party: "Party 2", voteCount: 20},
+        { id: 3, name: "Candidate 3", party: "Party 3", voteCount: 30}
       ],
       isActive: true
     },
@@ -73,8 +73,8 @@ class ElectionService {
       startDate: new Date(),
       endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
       candidates: [
-        { id: 1, name: "Candidate 1", party: "Tech Innovators", voteCount: null },
-        { id: 2, name: "Candidate 2", party: "Academic Excellence", voteCount: null}
+        { id: 1, name: "Candidate 1", party: "Party 1", voteCount: 30 },
+        { id: 2, name: "Candidate 2", party: "Party 2", voteCount: 40}
       ],
       isActive: true
     }
