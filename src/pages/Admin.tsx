@@ -57,9 +57,9 @@ const Admin = () => {
         setTransactions(transactionList);
         
         setUsers([
-          { id: 'user-123', name: 'John Doe', email: 'john@example.com', voterId: 'VID202504001', hasVoted: true, registrationDate: 'April 1, 2025' },
-          { id: 'user-456', name: 'Jane Smith', email: 'jane@example.com', voterId: 'VID202504002', hasVoted: false, registrationDate: 'April 2, 2025' },
-          { id: 'user-789', name: 'Bob Johnson', email: 'bob@example.com', voterId: 'VID202504003', hasVoted: true, registrationDate: 'April 3, 2025' },
+          { id: 'user-1', name: 'candidatename', email: 'candidatename@example.com', voterId: 'VID202504001', hasVoted: true, registrationDate: 'April 1, 2025' },
+          { id: 'user-2', name: 'candidatename', email: 'candidatename@example.com', voterId: 'VID202504002', hasVoted: false, registrationDate: 'April 2, 2025' },
+          { id: 'user-3', name: 'candidatename', email: 'candidatename@example.com', voterId: 'VID202504003', hasVoted: true, registrationDate: 'April 3, 2025' },
         ]);
       } catch (error) {
         console.error('Error fetching data:', error);
