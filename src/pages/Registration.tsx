@@ -236,7 +236,7 @@ const Registration = () => {
               id="address"
               value={formData.address}
               onChange={(e) => updateFormData('address', e.target.value)}
-              placeholder="123 Main St"
+              placeholder="Enter your street address"
               className="pl-10"
               required
             />
@@ -249,7 +249,7 @@ const Registration = () => {
             id="city"
             value={formData.city}
             onChange={(e) => updateFormData('city', e.target.value)}
-            placeholder="Anytown"
+            placeholder="Enter your city"
             required
           />
         </div>
@@ -261,7 +261,7 @@ const Registration = () => {
               id="state"
               value={formData.state}
               onChange={(e) => updateFormData('state', e.target.value)}
-              placeholder="CA"
+              placeholder="Enter your state"
               required
             />
           </div>
