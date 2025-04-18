@@ -174,7 +174,7 @@ const Registration = () => {
               id="firstName"
               value={formData.firstName}
               onChange={(e) => updateFormData('firstName', e.target.value)}
-              placeholder="John"
+              placeholder="Enter your first name"
               required
             />
           </div>
@@ -184,7 +184,7 @@ const Registration = () => {
               id="lastName"
               value={formData.lastName}
               onChange={(e) => updateFormData('lastName', e.target.value)}
-              placeholder="Doe"
+              placeholder="Enter your last name"
               required
             />
           </div>
@@ -199,7 +199,7 @@ const Registration = () => {
               type="email"
               value={formData.email}
               onChange={(e) => updateFormData('email', e.target.value)}
-              placeholder="john.doe@example.com"
+              placeholder="Enter your email address"
               className="pl-10"
               required
             />
@@ -215,7 +215,7 @@ const Registration = () => {
               type="tel"
               value={formData.phone}
               onChange={(e) => updateFormData('phone', e.target.value)}
-              placeholder="(123) 456-7890"
+              placeholder="Enter your phone number"
               className="pl-10"
               required
             />
@@ -271,7 +271,7 @@ const Registration = () => {
               id="postalCode"
               value={formData.postalCode}
               onChange={(e) => updateFormData('postalCode', e.target.value)}
-              placeholder="12345"
+              placeholder="Enter your postal code"
               required
             />
           </div>
@@ -304,7 +304,7 @@ const Registration = () => {
             id="idNumber"
             value={formData.idNumber}
             onChange={(e) => updateFormData('idNumber', e.target.value)}
-            placeholder="ID-1234567890"
+            placeholder="Enter your government ID number"
             required
           />
           <p className="text-xs text-muted-foreground">
