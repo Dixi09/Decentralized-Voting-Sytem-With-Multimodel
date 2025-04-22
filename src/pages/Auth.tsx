@@ -278,12 +278,6 @@ const AuthPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
-
-        <div className="mt-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            For testing purposes, you can disable email confirmation in the Supabase dashboard.
-          </p>
-        </div>
       </div>
     </div>
   );
