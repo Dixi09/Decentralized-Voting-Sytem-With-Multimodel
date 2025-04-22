@@ -21,11 +21,11 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const {
-    isCaptured,
-    isVerifying,
-    verificationStatus,
-    captureImage,
+  const { 
+    isCaptured, 
+    isVerifying, 
+    verificationStatus, 
+    captureImage, 
     retryCapture,
     hasReferenceImage
   } = useFaceVerification({ onVerified });
@@ -78,8 +78,8 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
         {!isCameraReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <Loader2 className="w-8 h-8 animate-spin text-white" />
-          </div>
-        )}
+        </div>
+      )}
         
         <video
           ref={videoRef}
@@ -91,9 +91,9 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
             isCaptured && "hidden"
           )}
         />
-        
-        <canvas
-          ref={canvasRef}
+      
+      <canvas 
+        ref={canvasRef} 
           className={cn(
             "w-full h-full object-cover",
             !isCaptured && "hidden"
@@ -103,7 +103,7 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
         {verificationStatus === 'success' && (
           <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
             <CheckCircle2 className="w-16 h-16 text-green-500" />
-          </div>
+    </div>
         )}
         
         {verificationStatus === 'error' && (
@@ -111,8 +111,8 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
             <XCircle className="w-16 h-16 text-red-500" />
           </div>
         )}
-      </div>
-
+            </div>
+            
       {error && (
         <div className="w-full max-w-md p-3 text-sm text-red-500 bg-red-50 rounded-md">
           {error}
@@ -139,13 +139,13 @@ const FaceRecognition = ({ onVerified, className }: FaceRecognitionProps) => {
             )}
           </Button>
         ) : (
-          <Button
+            <Button
             onClick={retryCapture}
             variant="outline"
             disabled={isVerifying}
-          >
+            >
             Try Again
-          </Button>
+            </Button>
         )}
       </div>
 
