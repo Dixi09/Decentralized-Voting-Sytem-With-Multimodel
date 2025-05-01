@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Election, Candidate, Vote, VoteStatistics } from "@/VotingContract";
 
@@ -297,8 +296,10 @@ class ElectionService {
    * Subscribe to real-time vote updates
    */
   private subscribeToVoteUpdates(electionId: string | number) {
+    const channelName = `election-${electionId}`;
+    
     supabase
-      .channel(`election-${electionId}`)
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
