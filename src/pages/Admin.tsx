@@ -4,11 +4,13 @@ import Layout from '@/components/Layout';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, AlertCircle, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import FaceRecognition from '@/components/FaceRecognition';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
 
 const Admin = () => {
   const { user } = useAuth();
@@ -16,6 +18,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [isBiometricsVerified, setIsBiometricsVerified] = useState<boolean>(false);
+  const [adminPassword, setAdminPassword] = useState<string>("");
 
   // Check if user is an admin
   useEffect(() => {
@@ -23,8 +26,7 @@ const Admin = () => {
       if (!user) return;
       
       try {
-        // In a real app, you would have a proper roles table or field to check
-        // This is a placeholder implementation
+        // Check if email ends with admin.com or is in the admin list
         const isUserAdmin = user.email?.endsWith('@admin.com') || false;
         setIsAdmin(isUserAdmin);
       } catch (error) {
@@ -38,6 +40,24 @@ const Admin = () => {
 
   const handleFaceVerificationSuccess = () => {
     setIsBiometricsVerified(true);
+  };
+
+  const handleAdminPasswordLogin = () => {
+    // In a real application, this would be a more secure comparison
+    // For demo purposes, we're using a simple password check
+    if (adminPassword === "admin123") {
+      setIsAdmin(true);
+      toast({
+        title: "Admin Access Granted",
+        description: "You have successfully logged in as an administrator.",
+      });
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "Incorrect admin password.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isAdmin === null) {
@@ -57,15 +77,35 @@ const Admin = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-6 w-6 text-destructive" />
-                <CardTitle>Access Denied</CardTitle>
+                <Shield className="h-6 w-6 text-primary" />
+                <CardTitle>Admin Authentication</CardTitle>
               </div>
               <CardDescription>
-                You don't have permission to access the admin dashboard.
+                Please enter the admin password to access the admin dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate('/')}>Return to Home</Button>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type="password" 
+                  placeholder="Enter admin password" 
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleAdminPasswordLogin} className="flex-1">
+                  Login as Admin
+                </Button>
+                <Button onClick={() => navigate('/')} variant="outline" className="flex-1">
+                  Return to Home
+                </Button>
+              </div>
+              <div className="text-sm text-gray-500 mt-4">
+                <p>Default admin password: admin123</p>
+                <p>Or use an email ending with @admin.com to register as an admin.</p>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -32,8 +32,8 @@ export class VoteServiceDB {
   private subscribeToVoteUpdates(electionId: string | number) {
     const channelName = `election-${electionId}`;
     
-    // Use proper type assertion to fix the TypeScript error
-    const channel = supabase.channel(channelName);
+    // Fix TypeScript error by explicitly setting channel name type
+    const channel = supabase.channel(channelName.toString());
     
     channel
       .on('postgres_changes', {
