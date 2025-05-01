@@ -32,8 +32,8 @@ export class VoteServiceDB {
   private subscribeToVoteUpdates(electionId: string | number) {
     const channelName = `election-${electionId}`;
     
-    // Use the correct typing for the channel method
-    const channel = supabase.channel(channelName);
+    // Fix type error by using the correct type for channel name
+    const channel = supabase.channel(channelName as string);
     
     channel
       .on('postgres_changes', {
