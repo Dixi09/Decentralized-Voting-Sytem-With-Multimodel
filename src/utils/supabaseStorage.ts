@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Election, Candidate, Vote, VoteStatistics } from "@/VotingContract";
 
@@ -209,7 +210,7 @@ class ElectionService {
         startDate: new Date(data.start_date),
         endDate: new Date(data.end_date),
         isActive: data.is_active,
-        candidates: data.candidates.map(candidate => ({
+        candidates: data.candidates.map((candidate: any) => ({
           id: candidate.id,
           name: candidate.name,
           party: candidate.party,
@@ -249,14 +250,14 @@ class ElectionService {
 
       if (error) throw error;
 
-      return elections.map(election => ({
+      return elections.map((election: any) => ({
         id: election.id,
         title: election.title,
         description: election.description,
         startDate: new Date(election.start_date),
         endDate: new Date(election.end_date),
         isActive: election.is_active,
-        candidates: election.candidates.map(candidate => ({
+        candidates: election.candidates.map((candidate: any) => ({
           id: candidate.id,
           name: candidate.name,
           party: candidate.party,
