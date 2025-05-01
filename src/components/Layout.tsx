@@ -72,7 +72,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       <footer className="border-t bg-white py-6">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>© 2025 SecureVote Chain - Decentralized Voting System with Facial Recognition</p>
+          <p>© 2025 SecureVote Chain - Decentralized Voting System with Multi-Model Biometric Verification</p>
         </div>
       </footer>
       
