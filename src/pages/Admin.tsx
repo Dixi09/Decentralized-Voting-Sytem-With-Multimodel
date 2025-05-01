@@ -27,7 +27,7 @@ const Admin = () => {
       
       try {
         // Check if email ends with admin.com or is in the admin list
-        const isUserAdmin = user.email?.endsWith('@admin.com') || false;
+        const isUserAdmin = user.email?.endsWith('@dixith123.com') || false;
         setIsAdmin(isUserAdmin);
       } catch (error) {
         console.error("Error checking admin status:", error);
@@ -45,7 +45,7 @@ const Admin = () => {
   const handleAdminPasswordLogin = () => {
     // In a real application, this would be a more secure comparison
     // For demo purposes, we're using a simple password check
-    if (adminPassword === "admin123") {
+    if (adminPassword === "dixith123") {
       setIsAdmin(true);
       toast({
         title: "Admin Access Granted",
@@ -102,10 +102,7 @@ const Admin = () => {
                   Return to Home
                 </Button>
               </div>
-              <div className="text-sm text-gray-500 mt-4">
-                <p>Default admin password: admin123</p>
-                <p>Or use an email ending with @admin.com to register as an admin.</p>
-              </div>
+             
             </CardContent>
           </Card>
         </div>
