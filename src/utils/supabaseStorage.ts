@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Election, Candidate, Vote, VoteStatistics } from "@/VotingContract";
 
@@ -298,8 +299,10 @@ class ElectionService {
   private subscribeToVoteUpdates(electionId: string | number) {
     const channelName = `election-${electionId}`;
     
-    supabase
-      .channel(channelName)
+    // Fix the TypeScript error by explicitly typing the channel as RealtimeChannel
+    const channel = supabase.channel(channelName);
+    
+    channel
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
