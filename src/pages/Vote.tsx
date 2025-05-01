@@ -2,6 +2,7 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import FaceRecognition from '@/components/FaceRecognition';
+import PalmRecognition from '@/components/PalmRecognition';
 import OTPVerification from '@/components/OTPVerification';
 import StepIndicator from '@/components/vote/StepIndicator';
 import VoteWelcome from '@/components/vote/VoteWelcome';
@@ -32,11 +33,20 @@ const Vote = () => {
   const steps = [
     { id: 1, label: "Start" },
     { id: 2, label: "Face Scan" },
-    { id: 3, label: "OTP" },
-    { id: 4, label: "Election" },
-    { id: 5, label: "Vote" },
-    { id: 6, label: "Confirm" }
+    { id: 3, label: "Palm Scan" },
+    { id: 4, label: "OTP" },
+    { id: 5, label: "Election" },
+    { id: 6, label: "Vote" },
+    { id: 7, label: "Confirm" }
   ];
+
+  const handlePalmVerificationSuccess = () => {
+    setStep(4); // Move to OTP step after palm verification
+  };
+
+  const handlePalmVerificationError = () => {
+    setStep(2); // Go back to face verification if palm verification fails
+  };
   
   const renderStep = () => {
     switch (step) {
@@ -65,6 +75,24 @@ const Vote = () => {
         return (
           <Card>
             <CardHeader>
+              <CardTitle>Palm Recognition</CardTitle>
+              <CardDescription>
+                Please position your palm in front of the camera for verification.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PalmRecognition
+                onVerified={handlePalmVerificationSuccess}
+                onError={handlePalmVerificationError}
+              />
+            </CardContent>
+          </Card>
+        );
+      
+      case 4:
+        return (
+          <Card>
+            <CardHeader>
               <CardTitle>OTP Verification</CardTitle>
               <CardDescription>
                 Enter the one-time password sent to your registered mobile device.
@@ -79,7 +107,7 @@ const Vote = () => {
           </Card>
         );
       
-      case 4:
+      case 5:
         return (
           <ElectionSelector 
             elections={elections}
@@ -88,19 +116,19 @@ const Vote = () => {
           />
         );
       
-      case 5:
+      case 6:
         return selectedElection ? (
           <CandidateSelector
             election={selectedElection}
             selectedCandidate={selectedCandidate}
             onSelectCandidate={handleSelectCandidate}
             onVote={handleCastVote}
-            onBack={() => setStep(4)}
+            onBack={() => setStep(5)}
             isLoading={isLoading}
           />
         ) : null;
       
-      case 6:
+      case 7:
         return (
           <VoteConfirmation
             election={selectedElection}

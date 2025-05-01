@@ -40,7 +40,7 @@ export const useVoting = () => {
       title: "Face Verification Successful",
       description: "Your identity has been verified.",
     });
-    setStep(3); // Move to OTP step
+    setStep(3); // Move to palm verification step
   };
   
   const handleFaceVerificationError = () => {
@@ -57,7 +57,7 @@ export const useVoting = () => {
       title: "OTP Verification Successful",
       description: "You can now access the voting system.",
     });
-    setStep(4); // Move to election selection
+    setStep(5); // Move to election selection
   };
   
   const handleOTPVerificationError = () => {
@@ -70,7 +70,7 @@ export const useVoting = () => {
   
   const handleSelectElection = (election: Election) => {
     setSelectedElection(election);
-    setStep(5); // Move to candidate selection
+    setStep(6); // Move to candidate selection
   };
   
   const handleSelectCandidate = (candidate: Candidate) => {
@@ -108,7 +108,7 @@ export const useVoting = () => {
         title: "Vote Cast Successfully",
         description: "Your vote has been recorded on the blockchain.",
       });
-      setStep(6); // Move to confirmation step
+      setStep(7); // Move to confirmation step
     } catch (error) {
       console.error('Error casting vote:', error);
       toast({
