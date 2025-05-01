@@ -1,10 +1,10 @@
 
-import React, { useRef, useState } from 'react';
-import { Camera, Loader2, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Camera, Loader2, CheckCircle2, XCircle, RotateCcw, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PalmRecognitionProps {
   onVerified: () => void;
@@ -15,34 +15,143 @@ interface PalmRecognitionProps {
 const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCaptured, setIsCaptured] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [attemptCount, setAttemptCount] = useState(0);
   const [isLivenessChecking, setIsLivenessChecking] = useState(false);
+  const [isPalmDetected, setIsPalmDetected] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [palmFeatures, setPalmFeatures] = useState<string[]>([]);
   
-  const startCamera = async () => {
-    try {
-      setVerificationStatus('idle');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          setIsCameraReady(true);
-        };
+  // Initialize camera
+  useEffect(() => {
+    const startCamera = async () => {
+      try {
+        setVerificationStatus('idle');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 } 
+          }
+        });
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+          };
+        }
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        toast({
+          title: "Camera Error",
+          description: "Could not access camera. Please ensure you have granted camera permissions.",
+          variant: "destructive",
+        });
+        if (onError) onError();
       }
-    } catch (err) {
-      console.error('Error accessing camera:', err);
-      toast({
-        title: "Camera Error",
-        description: "Could not access camera. Please ensure you have granted camera permissions.",
-        variant: "destructive",
-      });
-      if (onError) onError();
+    };
+    
+    startCamera();
+    
+    return () => {
+      stopCamera();
+    };
+  }, [onError]);
+  
+  // Simulate palm detection
+  useEffect(() => {
+    if (!isCameraReady || isCaptured) return;
+    
+    const detectPalm = () => {
+      const detectedPalm = Math.random() > 0.2; // 80% chance of detecting a palm
+      
+      if (detectedPalm) {
+        setIsPalmDetected(true);
+        setPalmFeatures(['main lines', 'heart line', 'head line', 'life line', 'fingerprint patterns']);
+        drawPalmOverlay();
+      } else {
+        setIsPalmDetected(false);
+        setPalmFeatures([]);
+      }
+    };
+    
+    const interval = setInterval(detectPalm, 2000);
+    return () => clearInterval(interval);
+  }, [isCameraReady, isCaptured]);
+  
+  // Draw palm detection overlay
+  const drawPalmOverlay = () => {
+    if (!overlayCanvasRef.current || !videoRef.current) return;
+    
+    const canvas = overlayCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear previous drawings
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set canvas dimensions
+    const video = videoRef.current;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    // Draw palm outline
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    // Draw palm boundary
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, 100, 160, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw main lines
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.6)';
+    ctx.lineWidth = 2;
+    
+    // Heart line
+    ctx.beginPath();
+    ctx.moveTo(centerX - 80, centerY - 40);
+    ctx.bezierCurveTo(centerX - 30, centerY - 60, centerX + 30, centerY - 60, centerX + 80, centerY - 30);
+    ctx.stroke();
+    
+    // Head line
+    ctx.beginPath();
+    ctx.moveTo(centerX - 80, centerY);
+    ctx.bezierCurveTo(centerX - 30, centerY - 10, centerX + 30, centerY - 10, centerX + 60, centerY);
+    ctx.stroke();
+    
+    // Life line
+    ctx.beginPath();
+    ctx.moveTo(centerX - 60, centerY - 80);
+    ctx.bezierCurveTo(centerX - 70, centerY - 20, centerX - 80, centerY + 40, centerX - 60, centerY + 100);
+    ctx.stroke();
+    
+    // Fate line
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY + 100);
+    ctx.bezierCurveTo(centerX, centerY + 50, centerX, centerY - 50, centerX, centerY - 100);
+    ctx.stroke();
+    
+    // Reference points
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+    const pointRadius = 3;
+    
+    // Draw detection points
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const x = centerX + Math.cos(angle) * 100;
+      const y = centerY + Math.sin(angle) * 160;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+      ctx.fill();
     }
   };
   
@@ -68,27 +177,37 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
-    // Draw the current video frame on the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setIsScanning(true);
     
-    setIsCaptured(true);
-    
-    // Start with liveness check before palm verification
-    setIsLivenessChecking(true);
     toast({
-      title: "Liveness Check",
-      description: "Please move your palm slightly to verify it's a real palm.",
+      title: "Palm Detection",
+      description: "Scanning palm features...",
     });
     
-    // Simulate liveness check completion after 2 seconds
+    // Simulate detailed scan
     setTimeout(() => {
-      setIsLivenessChecking(false);
+      // Draw the current video frame on the canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setIsCaptured(true);
+      setIsScanning(false);
+      
+      // Start with liveness check before palm verification
+      setIsLivenessChecking(true);
       toast({
-        title: "Liveness Check Complete",
-        description: "Now verifying your palm scan...",
+        title: "Liveness Check",
+        description: "Please move your palm slightly to verify it's a real palm.",
       });
-      verifyPalm();
-    }, 2000);
+      
+      // Simulate liveness check completion after 2 seconds
+      setTimeout(() => {
+        setIsLivenessChecking(false);
+        toast({
+          title: "Liveness Check Complete",
+          description: "Now verifying your palm scan...",
+        });
+        verifyPalm();
+      }, 2000);
+    }, 2500);
   };
   
   const verifyPalm = async () => {
@@ -100,7 +219,9 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
       
       // Factor in attempt count to make verification more strict after failures
       const successThreshold = 0.9 - (Math.min(attemptCount, 2) * 0.05);
-      const isSuccess = Math.random() < successThreshold;
+      
+      // Only succeed if palm was actually detected
+      const isSuccess = isPalmDetected && (Math.random() < successThreshold);
       
       if (isSuccess) {
         setVerificationStatus('success');
@@ -154,14 +275,6 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     setVerificationStatus('idle');
   };
   
-  React.useEffect(() => {
-    startCamera();
-    
-    return () => {
-      stopCamera();
-    };
-  }, []);
-  
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
       <div className="text-center mb-4">
@@ -195,6 +308,27 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
           )}
         />
         
+        {/* Overlay for palm detection visualization */}
+        <canvas
+          ref={overlayCanvasRef}
+          className={cn(
+            "absolute inset-0 w-full h-full",
+            (isCaptured || !isPalmDetected) && "hidden"
+          )}
+        />
+        
+        {isScanning && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative w-64 h-64">
+              <div className="absolute inset-0 border-4 border-blue-400 rounded-lg"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Scan className="w-12 h-12 text-blue-400" />
+              </div>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-[scanning_2s_ease-in-out_infinite]"></div>
+            </div>
+          </div>
+        )}
+        
         {isLivenessChecking && (
           <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
             <div className="text-center">
@@ -221,7 +355,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         {!isCaptured ? (
           <Button
             onClick={capturePalm}
-            disabled={!isCameraReady || isVerifying}
+            disabled={!isCameraReady || isVerifying || !isPalmDetected || isScanning}
             className="gap-2"
           >
             {isVerifying ? (
@@ -248,10 +382,28 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         )}
       </div>
       
+      {isPalmDetected && !isCaptured && (
+        <Alert className="w-full max-w-md bg-green-50 text-green-600 border-green-200">
+          <AlertTitle>Palm Detected</AlertTitle>
+          <AlertDescription>
+            <p>Found palm features: {palmFeatures.join(', ')}</p>
+            <p className="text-xs mt-1">Position your palm in the center and click "Scan Palm" button</p>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {!isPalmDetected && !isCaptured && (
+        <Alert className="w-full max-w-md bg-yellow-50 text-yellow-800 border-yellow-200">
+          <AlertDescription>
+            No palm detected. Please position your palm flat and parallel to the camera.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {attemptCount > 0 && (
         <Alert className={cn(
-          "w-full max-w-md text-amber-800 bg-amber-50",
-          attemptCount > 1 && "text-red-800 bg-red-50"
+          "w-full max-w-md",
+          attemptCount > 1 ? "bg-red-50 text-red-800 border-red-200" : "bg-amber-50 text-amber-800 border-amber-200"
         )}>
           <AlertDescription className="text-sm">
             {attemptCount === 1 ? (

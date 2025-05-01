@@ -3,8 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Camera, CheckCircle2, XCircle, Loader2, RotateCcw, UserPlus } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Camera, CheckCircle2, XCircle, Loader2, RotateCcw, UserPlus, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -19,8 +19,10 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [faceLandmarks, setFaceLandmarks] = useState<string[]>([]);
   const [isRegistrationMode, setIsRegistrationMode] = useState(false);
-  
+  const [isScanning, setIsScanning] = useState(false);
+
   const { 
     isCaptured, 
     isVerifying, 
@@ -44,6 +46,7 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
     }
   });
 
+  // Initialize camera
   useEffect(() => {
     let stream: MediaStream | null = null;
 
@@ -79,6 +82,27 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
     };
   }, [onError]);
 
+  // Simulate face detection with landmarks
+  const simulateFaceDetection = () => {
+    if (!isCameraReady || !videoRef.current) return;
+    
+    setIsScanning(true);
+    
+    // Simulate finding facial landmarks
+    setTimeout(() => {
+      setFaceLandmarks(['eyes', 'nose', 'mouth', 'jawline']);
+      setIsScanning(false);
+    }, 1500);
+  };
+
+  // Run simulated face detection when camera is ready
+  useEffect(() => {
+    if (isCameraReady && !isCaptured) {
+      const interval = setInterval(simulateFaceDetection, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isCameraReady, isCaptured]);
+
   const handleCapture = () => {
     if (isRegistrationMode) {
       captureImage(videoRef, canvasRef);
@@ -89,7 +113,17 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
       setError('You need to register your face first before attempting to vote.');
       return;
     }
-    captureImage(videoRef, canvasRef);
+    
+    setIsScanning(true);
+    toast({
+      title: "Face Detection",
+      description: "Scanning facial features...",
+    });
+    
+    setTimeout(() => {
+      setIsScanning(false);
+      captureImage(videoRef, canvasRef);
+    }, 1800);
   };
 
   const handleRegistrationMode = () => {
@@ -135,6 +169,28 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
           )}
         />
         
+        {/* Face detection overlay */}
+        {faceLandmarks.length > 0 && !isCaptured && !isScanning && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute left-1/2 top-1/3 w-48 h-48 border-2 border-green-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+            <div className="absolute left-[45%] top-[28%] w-3 h-3 bg-green-400 rounded-full"></div>
+            <div className="absolute left-[55%] top-[28%] w-3 h-3 bg-green-400 rounded-full"></div>
+            <div className="absolute left-1/2 top-[35%] w-3 h-3 bg-green-400 rounded-full transform -translate-x-1/2"></div>
+            <div className="absolute left-1/2 top-[42%] w-10 h-2 bg-green-400 rounded-full transform -translate-x-1/2"></div>
+          </div>
+        )}
+        
+        {isScanning && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+            <div className="w-56 h-56 border-2 border-blue-400 rounded-full relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Scan className="w-8 h-8 text-blue-400 animate-pulse" />
+              </div>
+              <div className="absolute inset-0 border-t-2 border-blue-400 rounded-full animate-spin" style={{animationDuration: '3s'}}></div>
+            </div>
+          </div>
+        )}
+        
         {verificationStatus === 'success' && (
           <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
             <CheckCircle2 className="w-16 h-16 text-green-500" />
@@ -160,9 +216,9 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
       </div>
             
       {error && (
-        <div className="w-full max-w-md p-3 text-sm text-red-500 bg-red-50 rounded-md">
-          {error}
-        </div>
+        <Alert variant="destructive" className="w-full max-w-md">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       <div className="flex gap-2">
@@ -180,7 +236,7 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
         {(hasReferenceImage || isRegistrationMode) && !isCaptured && (
           <Button
             onClick={handleCapture}
-            disabled={!isCameraReady || isVerifying || isRegistering}
+            disabled={!isCameraReady || isVerifying || isRegistering || isScanning}
             className="gap-2"
           >
             {isVerifying || isRegistering ? (
@@ -220,16 +276,30 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
       </div>
 
       {!hasReferenceImage && !isRegistrationMode && (
-        <div className="w-full max-w-md p-3 text-sm text-yellow-600 bg-yellow-50 rounded-md">
-          You need to register your face before you can vote. Please click the "Register Your Face" button above.
-        </div>
+        <Alert variant="warning" className="w-full max-w-md bg-yellow-50 text-yellow-800 border-yellow-200">
+          <AlertDescription>
+            You need to register your face before you can vote. Please click the "Register Your Face" button above.
+          </AlertDescription>
+        </Alert>
       )}
 
       {isLivenessChecking && (
-        <div className="w-full max-w-md p-3 text-sm text-blue-600 bg-blue-50 rounded-md">
-          <p className="font-semibold">Liveness check in progress</p>
-          <p className="mt-1">This helps prevent spoofing attacks using photos or videos.</p>
-        </div>
+        <Alert className="w-full max-w-md bg-blue-50 text-blue-600 border-blue-200">
+          <AlertDescription>
+            <p className="font-semibold">Liveness check in progress</p>
+            <p className="mt-1">This helps prevent spoofing attacks using photos or videos.</p>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {faceLandmarks.length > 0 && !isCaptured && !isScanning && (
+        <Alert className="w-full max-w-md bg-green-50 text-green-600 border-green-200">
+          <AlertDescription>
+            <p className="font-semibold">Face detected</p>
+            <p className="mt-1">Facial features identified: {faceLandmarks.join(', ')}</p>
+            <p className="text-xs mt-1">Position your face within the frame and click "Capture Face"</p>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

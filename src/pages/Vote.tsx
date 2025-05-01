@@ -10,7 +10,10 @@ import ElectionSelector from '@/components/vote/ElectionSelector';
 import CandidateSelector from '@/components/vote/CandidateSelector';
 import VoteConfirmation from '@/components/vote/VoteConfirmation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useVoting } from '@/hooks/useVoting';
+import { UserCheck, UserX, AlertTriangle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const Vote = () => {
   const {
@@ -21,6 +24,8 @@ const Vote = () => {
     selectedElection,
     selectedCandidate,
     transactionHash,
+    isBiometricsRegistered,
+    isCheckingEligibility,
     handleFaceVerificationSuccess,
     handleFaceVerificationError,
     handleOTPVerificationSuccess,
@@ -48,10 +53,60 @@ const Vote = () => {
     setStep(2); // Go back to face verification if palm verification fails
   };
   
+  const renderEligibilityCheck = () => {
+    if (isCheckingEligibility) {
+      return (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+              <p className="text-center">Checking your voter registration status...</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    if (!isBiometricsRegistered) {
+      return (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Registration Required</AlertTitle>
+          <AlertDescription>
+            <p className="mb-2">You must register your biometrics before you can vote.</p>
+            <p>Please complete the biometric registration process to continue.</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => setStep(2)}
+            >
+              Register Biometrics
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    
+    return (
+      <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+        <UserCheck className="h-4 w-4 text-green-600" />
+        <AlertTitle className="text-green-700">Voter Verified</AlertTitle>
+        <AlertDescription className="text-green-600">
+          Your registration is complete. You can proceed with the voting process.
+        </AlertDescription>
+      </Alert>
+    );
+  };
+  
   const renderStep = () => {
     switch (step) {
       case 1:
-        return <VoteWelcome onNext={() => setStep(2)} />;
+        return (
+          <>
+            {renderEligibilityCheck()}
+            <VoteWelcome onNext={() => setStep(2)} />
+          </>
+        );
       
       case 2:
         return (

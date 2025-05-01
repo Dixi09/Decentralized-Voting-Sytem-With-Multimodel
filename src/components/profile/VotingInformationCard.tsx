@@ -1,10 +1,14 @@
+
 import React from 'react';
 import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Vote, CheckCircle2, XCircle } from 'lucide-react';
+import { Vote, CheckCircle2, XCircle, FileText, Calendar, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
 
 interface VotingInformationCardProps {
   isEditing: boolean;
@@ -22,6 +26,7 @@ interface VotingInformationCardProps {
       party: string;
     };
     transactionHash?: string;
+    timestamp?: string;
   };
 }
 
@@ -33,6 +38,16 @@ const VotingInformationCard = ({
   hasVoted,
   votingDetails
 }: VotingInformationCardProps) => {
+  const navigate = useNavigate();
+
+  const handleGoToVoting = () => {
+    navigate('/vote');
+  };
+
+  const handleViewResults = () => {
+    navigate('/results');
+  };
+
   return (
     <>
       <CardHeader>
@@ -60,45 +75,114 @@ const VotingInformationCard = ({
             )}
           </div>
           
-          {hasVoted ? (
-            <div className="space-y-2 text-sm">
-              <p><span className="font-medium">Election:</span> {votingDetails.election?.title}</p>
-              <p><span className="font-medium">Date:</span> {votingDetails.election?.date}</p>
-              <p><span className="font-medium">Candidate:</span> {votingDetails.candidate?.name} ({votingDetails.candidate?.party})</p>
+          {hasVoted && votingDetails ? (
+            <div className="space-y-4">
+              {/* Election Information */}
+              <div className="flex flex-col gap-2 p-3 bg-green-50 rounded-md">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">Election:</span>
+                  <span className="text-green-800">{votingDetails.election?.title || "National Election"}</span>
+                </div>
+                
+                {votingDetails.timestamp && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">Date:</span>
+                    <span className="text-green-800">
+                      {format(new Date(votingDetails.timestamp), 'PPP')}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">Candidate:</span>
+                  <span className="text-green-800">
+                    {votingDetails.candidate?.name} 
+                    <span className="ml-1 text-sm text-green-600">
+                      ({votingDetails.candidate?.party})
+                    </span>
+                  </span>
+                </div>
+              </div>
+              
+              {/* Transaction Information */}
               {votingDetails.transactionHash && (
-                <p className="text-xs text-muted-foreground break-all">
-                  <span className="font-medium">Transaction:</span> {votingDetails.transactionHash}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">Transaction:</span>
+                  </p>
+                  <div className="p-2 bg-slate-50 border rounded text-xs font-mono break-all">
+                    {votingDetails.transactionHash}
+                  </div>
+                </div>
               )}
+              
               <div className="mt-4">
-                <p className="text-green-600 flex items-center">
-                  <CheckCircle2 className="h-4 w-4 mr-1" /> 
-                  Your vote has been successfully submitted and recorded on the decentralized ledger.
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle2 className="h-5 w-5" /> 
+                  <p className="font-medium">Vote Successfully Recorded</p>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your vote has been securely submitted and recorded on the decentralized ledger.
                   Thank you for participating in the democratic process.
                 </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-red-500 flex items-center">
-                <XCircle className="h-4 w-4 mr-1" /> 
-                You have not yet cast your vote.
-              </p>
-              <p className="text-sm">
-                Please proceed to the voting page to complete the process. 
-                Voting is only allowed once per registered voter.
-              </p>
-              <div className="pt-4">
-                <Button size="sm" variant="default" className="mt-2">
-                  <Vote className="h-4 w-4 mr-2" />
-                  Go to Voting Page
+                <Button
+                  onClick={handleViewResults}
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-4"
+                >
+                  View Election Results
                 </Button>
               </div>
             </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 bg-red-50 rounded-md">
+                <div className="flex items-center text-red-500 mb-2">
+                  <XCircle className="h-5 w-5 mr-2" /> 
+                  <p className="font-medium">You have not yet cast your vote</p>
+                </div>
+                <p className="text-sm text-red-700">
+                  Please proceed to the voting page to complete the voting process. 
+                  Only registered voters with verified biometrics can participate.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Before voting, you must complete these steps:</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">1</Badge>
+                    <span className="text-sm">Register your biometrics (face and palm)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">2</Badge>
+                    <span className="text-sm">Complete identity verification</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">3</Badge>
+                    <span className="text-sm">Cast your vote in an active election</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleGoToVoting}
+                size="sm" 
+                variant="default" 
+                className="w-full mt-2"
+              >
+                <Vote className="h-4 w-4 mr-2" />
+                Go to Voting Page
+              </Button>
+            </div>
           )}
         </div>
+        
+        <Separator />
 
         {/* Personal Information */}
         <div>
@@ -142,7 +226,7 @@ const VotingInformationCard = ({
               <Badge variant="outline" className="border-green-500 text-green-500">Registered</Badge>
             </div>
             <div className="text-sm text-muted-foreground">Last Verification</div>
-            <div className="text-sm">{new Date().toLocaleDateString()}</div>
+            <div className="text-sm">{format(new Date(), 'PPP')}</div>
           </div>
         </div>
       </CardContent>

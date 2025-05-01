@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import VotingContract, { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useVoting = () => {
   const { user } = useAuth();
@@ -12,6 +13,41 @@ export const useVoting = () => {
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [isBiometricsRegistered, setIsBiometricsRegistered] = useState(false);
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+
+  useEffect(() => {
+    // Check if user has registered biometrics
+    const checkBiometricsRegistration = async () => {
+      if (!user?.id) return;
+
+      try {
+        setIsCheckingEligibility(true);
+
+        const { data, error } = await supabase
+          .from('user_biometrics')
+          .select('face_image_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        // User has registered biometrics if face_image_url exists
+        setIsBiometricsRegistered(!!data?.face_image_url);
+      } catch (error) {
+        console.error('Error checking biometrics:', error);
+        toast({
+          title: "Error",
+          description: "Failed to verify your registration status.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsCheckingEligibility(false);
+      }
+    };
+
+    checkBiometricsRegistration();
+  }, [user]);
   
   useEffect(() => {
     const fetchElections = async () => {
@@ -80,6 +116,16 @@ export const useVoting = () => {
   const handleCastVote = async () => {
     if (!selectedElection || !selectedCandidate || !user) return;
     
+    // Check if biometrics are registered
+    if (!isBiometricsRegistered) {
+      toast({
+        title: "Registration Required",
+        description: "You must register your biometrics before voting. Please complete the registration process.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const votingContract = VotingContract.getInstance();
@@ -129,6 +175,8 @@ export const useVoting = () => {
     selectedElection,
     selectedCandidate,
     transactionHash,
+    isBiometricsRegistered,
+    isCheckingEligibility,
     handleFaceVerificationSuccess,
     handleFaceVerificationError,
     handleOTPVerificationSuccess,
