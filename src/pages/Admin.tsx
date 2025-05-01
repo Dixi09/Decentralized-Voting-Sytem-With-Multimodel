@@ -4,13 +4,34 @@ import Layout from '@/components/Layout';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { Shield, AlertCircle, Loader2, Lock, UserPlus, Calendar, Check, Users, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import FaceRecognition from '@/components/FaceRecognition';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface Election {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
+
+interface Candidate {
+  id: string;
+  name: string;
+  party: string;
+  bio: string;
+  election_id: string;
+}
 
 const Admin = () => {
   const { user } = useAuth();
@@ -19,6 +40,23 @@ const Admin = () => {
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [isBiometricsVerified, setIsBiometricsVerified] = useState<boolean>(false);
   const [adminPassword, setAdminPassword] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("create");
+  const [elections, setElections] = useState<Election[]>([]);
+  const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [isLoadingElections, setIsLoadingElections] = useState<boolean>(false);
+  
+  // Form states for creating/editing elections
+  const [electionTitle, setElectionTitle] = useState<string>("");
+  const [electionDescription, setElectionDescription] = useState<string>("");
+  const [electionStartDate, setElectionStartDate] = useState<string>("");
+  const [electionEndDate, setElectionEndDate] = useState<string>("");
+  const [isActive, setIsActive] = useState<boolean>(true);
+  
+  // Form states for adding candidates
+  const [candidateName, setCandidateName] = useState<string>("");
+  const [candidateParty, setCandidateParty] = useState<string>("");
+  const [candidateBio, setCandidateBio] = useState<string>("");
 
   // Check if user is an admin
   useEffect(() => {
@@ -37,6 +75,247 @@ const Admin = () => {
 
     checkAdminStatus();
   }, [user]);
+
+  // Fetch elections
+  useEffect(() => {
+    if (isBiometricsVerified) {
+      fetchElections();
+    }
+  }, [isBiometricsVerified]);
+
+  // Fetch candidates when an election is selected
+  useEffect(() => {
+    if (selectedElection) {
+      fetchCandidates(selectedElection.id);
+    }
+  }, [selectedElection]);
+
+  const fetchElections = async () => {
+    setIsLoadingElections(true);
+    try {
+      const { data, error } = await supabase
+        .from('elections')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setElections(data || []);
+    } catch (error) {
+      console.error("Error fetching elections:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load elections data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingElections(false);
+    }
+  };
+
+  const fetchCandidates = async (electionId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('election_id', electionId);
+        
+      if (error) throw error;
+      
+      setCandidates(data || []);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load candidates data.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleElectionSelect = (electionId: string) => {
+    const election = elections.find(e => e.id === electionId);
+    if (election) {
+      setSelectedElection(election);
+      setElectionTitle(election.title);
+      setElectionDescription(election.description || "");
+      setElectionStartDate(new Date(election.start_date).toISOString().split('T')[0]);
+      setElectionEndDate(new Date(election.end_date).toISOString().split('T')[0]);
+      setIsActive(election.is_active);
+      setActiveTab("edit");
+    }
+  };
+
+  const handleCreateElection = async () => {
+    if (!electionTitle || !electionStartDate || !electionEndDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('elections')
+        .insert([{
+          title: electionTitle,
+          description: electionDescription,
+          start_date: electionStartDate,
+          end_date: electionEndDate,
+          is_active: isActive,
+          created_by: user?.id
+        }])
+        .select();
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Election Created",
+        description: "The election has been successfully created.",
+      });
+      
+      // Reset form fields
+      setElectionTitle("");
+      setElectionDescription("");
+      setElectionStartDate("");
+      setElectionEndDate("");
+      
+      // Update elections list
+      fetchElections();
+      
+      // If the created election has data, select it for adding candidates
+      if (data && data.length > 0) {
+        setSelectedElection(data[0]);
+        setActiveTab("candidates");
+      }
+      
+    } catch (error) {
+      console.error("Error creating election:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create the election. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateElection = async () => {
+    if (!selectedElection || !electionTitle || !electionStartDate || !electionEndDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('elections')
+        .update({
+          title: electionTitle,
+          description: electionDescription,
+          start_date: electionStartDate,
+          end_date: electionEndDate,
+          is_active: isActive
+        })
+        .eq('id', selectedElection.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Election Updated",
+        description: "The election details have been successfully updated.",
+      });
+      
+      // Update elections list
+      fetchElections();
+      
+    } catch (error) {
+      console.error("Error updating election:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the election. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddCandidate = async () => {
+    if (!selectedElection || !candidateName || !candidateParty) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields for the candidate.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .insert([{
+          name: candidateName,
+          party: candidateParty,
+          bio: candidateBio,
+          election_id: selectedElection.id
+        }]);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Candidate Added",
+        description: "The candidate has been successfully added to the election.",
+      });
+      
+      // Reset form fields
+      setCandidateName("");
+      setCandidateParty("");
+      setCandidateBio("");
+      
+      // Update candidates list
+      fetchCandidates(selectedElection.id);
+      
+    } catch (error) {
+      console.error("Error adding candidate:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the candidate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveCandidate = async (candidateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', candidateId);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Candidate Removed",
+        description: "The candidate has been successfully removed from the election.",
+      });
+      
+      // Update candidates list
+      if (selectedElection) {
+        fetchCandidates(selectedElection.id);
+      }
+      
+    } catch (error) {
+      console.error("Error removing candidate:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove the candidate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleFaceVerificationSuccess = () => {
     setIsBiometricsVerified(true);
@@ -129,7 +408,301 @@ const Admin = () => {
             </CardContent>
           </Card>
         ) : (
-          <AdminDashboard />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold">Election Management System</h1>
+              <Button variant="outline" onClick={() => fetchElections()} disabled={isLoadingElections}>
+                {isLoadingElections ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+              </Button>
+            </div>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-3">
+                <TabsTrigger value="create">Create Election</TabsTrigger>
+                <TabsTrigger value="edit">Edit Election</TabsTrigger>
+                <TabsTrigger value="candidates">Manage Candidates</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="create">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Vote className="h-6 w-6 text-primary" />
+                      <CardTitle>Create New Election</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Fill in the details to create a new election.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Election Title*</Label>
+                      <Input
+                        id="title"
+                        placeholder="e.g., Presidential Election 2025"
+                        value={electionTitle}
+                        onChange={(e) => setElectionTitle(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="description">Election Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Enter a detailed description of the election"
+                        value={electionDescription}
+                        onChange={(e) => setElectionDescription(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="startDate">Start Date*</Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          value={electionStartDate}
+                          onChange={(e) => setElectionStartDate(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="endDate">End Date*</Label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          value={electionEndDate}
+                          onChange={(e) => setElectionEndDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="active"
+                        type="checkbox"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        className="h-4 w-4 text-primary rounded"
+                      />
+                      <Label htmlFor="active">Active</Label>
+                    </div>
+                    
+                    <Button onClick={handleCreateElection} className="w-full">
+                      Create Election
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="edit">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-6 w-6 text-primary" />
+                      <CardTitle>Edit Existing Election</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Select an election from the list to edit its details.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {isLoadingElections ? (
+                      <div className="flex justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <Label htmlFor="selectElection">Select Election</Label>
+                          <Select 
+                            value={selectedElection?.id || ""} 
+                            onValueChange={handleElectionSelect}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an election" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {elections.map(election => (
+                                <SelectItem key={election.id} value={election.id}>
+                                  {election.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {selectedElection && (
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="editTitle">Election Title*</Label>
+                              <Input
+                                id="editTitle"
+                                value={electionTitle}
+                                onChange={(e) => setElectionTitle(e.target.value)}
+                              />
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="editDescription">Election Description</Label>
+                              <Textarea
+                                id="editDescription"
+                                value={electionDescription}
+                                onChange={(e) => setElectionDescription(e.target.value)}
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="editStartDate">Start Date*</Label>
+                                <Input
+                                  id="editStartDate"
+                                  type="date"
+                                  value={electionStartDate}
+                                  onChange={(e) => setElectionStartDate(e.target.value)}
+                                />
+                              </div>
+                              
+                              <div>
+                                <Label htmlFor="editEndDate">End Date*</Label>
+                                <Input
+                                  id="editEndDate"
+                                  type="date"
+                                  value={electionEndDate}
+                                  onChange={(e) => setElectionEndDate(e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <input
+                                id="editActive"
+                                type="checkbox"
+                                checked={isActive}
+                                onChange={(e) => setIsActive(e.target.checked)}
+                                className="h-4 w-4 text-primary rounded"
+                              />
+                              <Label htmlFor="editActive">Active</Label>
+                            </div>
+                            
+                            <Button onClick={handleUpdateElection} className="w-full">
+                              Update Election
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="candidates">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-6 w-6 text-primary" />
+                      <CardTitle>Manage Candidates</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Add or remove candidates for an election.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="candidateElection">Select Election</Label>
+                      <Select 
+                        value={selectedElection?.id || ""} 
+                        onValueChange={handleElectionSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an election" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {elections.map(election => (
+                            <SelectItem key={election.id} value={election.id}>
+                              {election.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {selectedElection && (
+                      <div className="space-y-6">
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium">Add New Candidate</h3>
+                          
+                          <div>
+                            <Label htmlFor="candidateName">Candidate Name*</Label>
+                            <Input
+                              id="candidateName"
+                              placeholder="Enter candidate name"
+                              value={candidateName}
+                              onChange={(e) => setCandidateName(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="candidateParty">Party*</Label>
+                            <Input
+                              id="candidateParty"
+                              placeholder="Enter political party"
+                              value={candidateParty}
+                              onChange={(e) => setCandidateParty(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="candidateBio">Biography</Label>
+                            <Textarea
+                              id="candidateBio"
+                              placeholder="Enter candidate biography"
+                              value={candidateBio}
+                              onChange={(e) => setCandidateBio(e.target.value)}
+                            />
+                          </div>
+                          
+                          <Button onClick={handleAddCandidate}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Add Candidate
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium">Current Candidates</h3>
+                          
+                          {candidates.length === 0 ? (
+                            <p className="text-muted-foreground">No candidates added for this election yet.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {candidates.map(candidate => (
+                                <div key={candidate.id} className="p-3 border rounded flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium">{candidate.name}</p>
+                                    <p className="text-sm text-muted-foreground">{candidate.party}</p>
+                                  </div>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleRemoveCandidate(candidate.id)}
+                                    className="text-destructive border-destructive hover:bg-destructive/10"
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+            
+            <AdminDashboard />
+          </div>
         )}
       </div>
     </Layout>

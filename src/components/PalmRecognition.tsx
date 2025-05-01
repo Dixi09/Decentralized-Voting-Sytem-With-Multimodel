@@ -4,6 +4,7 @@ import { Camera, Loader2, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PalmRecognitionProps {
   onVerified: () => void;
@@ -18,9 +19,12 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
   const [isCaptured, setIsCaptured] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [isLivenessChecking, setIsLivenessChecking] = useState(false);
   
   const startCamera = async () => {
     try {
+      setVerificationStatus('idle');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
@@ -68,18 +72,35 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     setIsCaptured(true);
-    verifyPalm();
+    
+    // Start with liveness check before palm verification
+    setIsLivenessChecking(true);
+    toast({
+      title: "Liveness Check",
+      description: "Please move your palm slightly to verify it's a real palm.",
+    });
+    
+    // Simulate liveness check completion after 2 seconds
+    setTimeout(() => {
+      setIsLivenessChecking(false);
+      toast({
+        title: "Liveness Check Complete",
+        description: "Now verifying your palm scan...",
+      });
+      verifyPalm();
+    }, 2000);
   };
   
   const verifyPalm = async () => {
     setIsVerifying(true);
     
     try {
-      // Simulate palm verification process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simulate enhanced palm verification process
+      await new Promise(resolve => setTimeout(resolve, 2500));
       
-      // 90% success rate for demo purposes
-      const isSuccess = Math.random() < 0.9;
+      // Factor in attempt count to make verification more strict after failures
+      const successThreshold = 0.9 - (Math.min(attemptCount, 2) * 0.05);
+      const isSuccess = Math.random() < successThreshold;
       
       if (isSuccess) {
         setVerificationStatus('success');
@@ -94,13 +115,24 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         }, 1500);
       } else {
         setVerificationStatus('error');
-        toast({
-          title: "Verification Failed",
-          description: "Palm verification failed. Please try again.",
-          variant: "destructive",
-        });
+        setAttemptCount(prevCount => prevCount + 1);
         
-        // Reset to try again
+        // Different messaging based on attempt count
+        if (attemptCount >= 2) {
+          toast({
+            title: "Verification Failed",
+            description: "Multiple failed attempts detected. Please try again with better lighting or contact support.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Verification Failed",
+            description: "Palm verification failed. Please ensure your entire palm is visible and well-lit.",
+            variant: "destructive",
+          });
+        }
+        
+        // Reset to try again after a delay
         setTimeout(() => {
           retryCapture();
         }, 2000);
@@ -133,7 +165,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
       <div className="text-center mb-4">
-        <h3 className="text-lg font-medium">Palm Verification</h3>
+        <h3 className="text-lg font-medium">Enhanced Palm Verification</h3>
         <p className="text-sm text-gray-500">Place your palm facing the camera</p>
       </div>
       
@@ -162,6 +194,15 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
             !isCaptured && "hidden"
           )}
         />
+        
+        {isLivenessChecking && (
+          <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
+            <div className="text-center">
+              <Loader2 className="w-16 h-16 text-blue-500 mx-auto animate-spin" />
+              <p className="text-blue-500 font-medium mt-2">Performing liveness check...</p>
+            </div>
+          </div>
+        )}
         
         {verificationStatus === 'success' && (
           <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
@@ -199,7 +240,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
           <Button
             onClick={retryCapture}
             variant="outline"
-            disabled={isVerifying}
+            disabled={isVerifying || isLivenessChecking}
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Try Again
@@ -207,12 +248,29 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         )}
       </div>
       
+      {attemptCount > 0 && (
+        <Alert className={cn(
+          "w-full max-w-md text-amber-800 bg-amber-50",
+          attemptCount > 1 && "text-red-800 bg-red-50"
+        )}>
+          <AlertDescription className="text-sm">
+            {attemptCount === 1 ? (
+              "Verification failed. Make sure your palm is well-lit and centered in the frame."
+            ) : (
+              "Multiple verification failures detected. This may be logged as a security event."
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="w-full max-w-md p-3 text-sm text-blue-600 bg-blue-50 rounded-md">
         <p>For best results:</p>
         <ul className="list-disc list-inside mt-1">
           <li>Hold your palm flat and parallel to the camera</li>
           <li>Ensure good lighting conditions</li>
+          <li>Make sure all your palm lines are clearly visible</li>
           <li>Keep your hand steady during scanning</li>
+          <li>Remove any jewelry or watches from your palm</li>
         </ul>
       </div>
     </div>

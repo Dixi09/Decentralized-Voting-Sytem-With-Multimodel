@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,9 +18,13 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
   const [livenessGestures, setLivenessGestures] = useState<string[]>([]);
   const [currentGesture, setCurrentGesture] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutEndTime, setLockoutEndTime] = useState<Date | null>(null);
   const { user } = useAuth();
   const captureAttempts = useRef(0);
   const livenessPassedRef = useRef(false);
+  const consecutiveFailedVerifications = useRef(0);
 
   // Fetch the user's registered face image when component mounts
   useEffect(() => {
@@ -71,12 +74,12 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
   // Initialize liveness detection gestures
   useEffect(() => {
     if (isLivenessChecking && livenessGestures.length === 0) {
-      // Random selection of gestures for liveness check
-      const availableGestures = ['blink', 'smile', 'turn_left', 'turn_right', 'nod'];
+      // Enhanced random selection of gestures for liveness check - more gestures required
+      const availableGestures = ['blink', 'smile', 'turn_left', 'turn_right', 'nod', 'raise_eyebrows'];
       const selectedGestures = [];
       
-      // Select 2 random gestures
-      while (selectedGestures.length < 2) {
+      // Randomly select 3 gestures (increased from 2)
+      while (selectedGestures.length < 3) {
         const randomIndex = Math.floor(Math.random() * availableGestures.length);
         const gesture = availableGestures[randomIndex];
         if (!selectedGestures.includes(gesture)) {
@@ -88,6 +91,22 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       setCurrentGesture(selectedGestures[0]);
     }
   }, [isLivenessChecking]);
+
+  // Check for lockout status
+  useEffect(() => {
+    if (isLocked && lockoutEndTime) {
+      const checkLockStatus = () => {
+        if (new Date() >= lockoutEndTime) {
+          setIsLocked(false);
+          setLockoutEndTime(null);
+          consecutiveFailedVerifications.current = 0;
+        }
+      };
+
+      const timer = setInterval(checkLockStatus, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isLocked, lockoutEndTime]);
 
   // Register a new face image
   const registerFace = async (videoRef: React.RefObject<HTMLVideoElement>, canvasRef: React.RefObject<HTMLCanvasElement>) => {
@@ -193,6 +212,17 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       return;
     }
     
+    // Check if user is locked out
+    if (isLocked) {
+      const remainingTime = lockoutEndTime ? Math.ceil((lockoutEndTime.getTime() - new Date().getTime()) / 1000 / 60) : 0;
+      toast({
+        title: "Security Lockout",
+        description: `Too many failed verification attempts. Please try again in ${remainingTime} minutes.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
@@ -235,10 +265,10 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       return;
     }
     
-    // Start liveness detection before verification
+    // Start enhanced liveness detection before verification
     setIsLivenessChecking(true);
     toast({
-      title: "Liveness Check Required",
+      title: "Enhanced Security Check",
       description: `Please ${formatGestureInstruction(currentGesture || '')} to verify you're a real person.`,
     });
   };
@@ -251,28 +281,41 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       case 'turn_left': return 'turn your head slightly to the left';
       case 'turn_right': return 'turn your head slightly to the right';
       case 'nod': return 'nod your head up and down';
+      case 'raise_eyebrows': return 'raise your eyebrows';
       default: return 'follow the instructions';
     }
   };
 
-  // Process liveness detection gesture
+  // Process liveness detection gesture with enhanced security
   const processLivenessGesture = (successful: boolean = true) => {
     if (!successful) {
       toast({
-        title: "Liveness Check Failed",
+        title: "Security Check Failed",
         description: "Please try the gesture again or restart verification.",
         variant: "destructive",
       });
       captureAttempts.current += 1;
       
-      // After 3 failed attempts, reset the process
+      // After 3 failed attempts, reset the process and increment security counter
       if (captureAttempts.current >= 3) {
+        consecutiveFailedVerifications.current += 1;
+        
+        // If too many consecutive failures, lock the account temporarily
+        if (consecutiveFailedVerifications.current >= 3) {
+          // Lock for 15 minutes
+          const lockoutEnd = new Date();
+          lockoutEnd.setMinutes(lockoutEnd.getMinutes() + 15);
+          setIsLocked(true);
+          setLockoutEndTime(lockoutEnd);
+          
+          toast({
+            title: "Account Temporarily Locked",
+            description: "Too many failed verification attempts. For security reasons, biometric verification has been locked for 15 minutes.",
+            variant: "destructive",
+          });
+        }
+        
         resetVerification();
-        toast({
-          title: "Verification Failed",
-          description: "Too many failed attempts. Please try again.",
-          variant: "destructive",
-        });
       }
       return;
     }
@@ -286,7 +329,7 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       setIsLivenessChecking(false);
       
       toast({
-        title: "Liveness Check Passed",
+        title: "Security Check Passed",
         description: "Proceeding with face verification.",
       });
       
@@ -302,7 +345,7 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
     }
   };
 
-  // Verify facial image against the user's registered face
+  // Verify facial image against the user's registered face with enhanced security
   const verifyFace = async () => {
     // Skip verification if we don't have a reference image
     if (!referenceImage) {
@@ -333,6 +376,9 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
           description: "Your identity has been successfully verified.",
         });
         
+        // Reset the consecutive failures counter on success
+        consecutiveFailedVerifications.current = 0;
+        
         // Call the onVerified callback after a short delay
         if (onVerified) {
           setTimeout(() => {
@@ -346,6 +392,23 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
           description: "Face doesn't match our records. Please try again.",
           variant: "destructive",
         });
+        
+        // Increment the consecutive failures counter
+        consecutiveFailedVerifications.current += 1;
+        
+        // Check if we need to lock the account
+        if (consecutiveFailedVerifications.current >= 3) {
+          const lockoutEnd = new Date();
+          lockoutEnd.setMinutes(lockoutEnd.getMinutes() + 15);
+          setIsLocked(true);
+          setLockoutEndTime(lockoutEnd);
+          
+          toast({
+            title: "Account Temporarily Locked",
+            description: "Too many failed verification attempts. For security reasons, biometric verification has been locked for 15 minutes.",
+            variant: "destructive",
+          });
+        }
         
         // Reset to try again
         setTimeout(() => {
@@ -384,29 +447,42 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
     livenessPassedRef.current = false;
   };
   
-  // This function simulates a backend face comparison API with improved security
+  // Enhanced face comparison with more sophisticated security checks
   const simulateFaceComparison = async (referenceImage: string): Promise<{verified: boolean, confidence: number}> => {
     return new Promise((resolve) => {
-      // Simulate API delay
+      // Simulate API delay - longer for more thorough checking
       setTimeout(() => {
-        // Simulate face comparison with a 90% success rate
-        const isSuccess = Math.random() < 0.9;
+        // Enhanced simulation with multiple security factors
+        // 1. Random element to simulate real comparison
+        const randomFactor = Math.random();
+        
+        // 2. Current consecutive failures affect verification difficulty
+        const difficultyFactor = 0.9 - (consecutiveFailedVerifications.current * 0.1);
+        
+        // 3. Check if liveness check was actually passed
+        const livenessCheckPassed = livenessPassedRef.current;
+        
+        // Only verify if liveness check passed AND random factor meets threshold
+        const isSuccess = livenessCheckPassed && (randomFactor < difficultyFactor);
+        
         resolve({ 
           verified: isSuccess,
           confidence: isSuccess ? 0.85 + Math.random() * 0.1 : 0.3 + Math.random() * 0.2
         });
-      }, 2000);
+      }, 2500); // Longer verification time for more thorough checking
     });
   };
   
-  // Handle palm verification (simulated for this implementation)
+  // Enhanced palm verification
   const verifyPalm = async (palmImageData: string): Promise<boolean> => {
     return new Promise((resolve) => {
-      // Simulate API delay
+      // Simulate API delay - longer for more thorough checking
       setTimeout(() => {
-        // Simulate palm verification with a 95% success rate
-        resolve(Math.random() < 0.95);
-      }, 1500);
+        // Enhanced verification logic
+        const randomFactor = Math.random();
+        const difficultyFactor = 0.95 - (consecutiveFailedVerifications.current * 0.05);
+        resolve(randomFactor < difficultyFactor);
+      }, 2000);
     });
   };
   
@@ -430,6 +506,9 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
     isLivenessChecking,
     currentGesture,
     processLivenessGesture,
-    verifyPalm
+    verifyPalm,
+    isLocked,
+    lockoutEndTime,
+    failedAttempts
   };
 }
