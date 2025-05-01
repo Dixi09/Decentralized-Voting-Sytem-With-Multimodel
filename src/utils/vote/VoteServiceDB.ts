@@ -30,9 +30,9 @@ export class VoteServiceDB {
    * Subscribe to real-time vote updates
    */
   private subscribeToVoteUpdates(electionId: string | number) {
-    // Fix the type error by properly typing the channel name
     const channelName = `election-${electionId}`;
     
+    // Use the correct typing for the channel method
     const channel = supabase.channel(channelName);
     
     channel
