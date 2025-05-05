@@ -1,33 +1,25 @@
 
 import React from 'react';
-import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Vote, CheckCircle2, XCircle, FileText, Calendar, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle, Vote, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
-import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
 
 interface VotingInformationCardProps {
   isEditing: boolean;
   editedName: string;
-  setEditedName: (value: string) => void;
+  setEditedName: (name: string) => void;
   editedEmail: string;
   hasVoted: boolean;
   votingDetails: {
-    election?: {
-      title: string;
-      date: string;
-    };
-    candidate?: {
-      name: string;
-      party: string;
-    };
-    transactionHash?: string;
+    electionName?: string;
+    candidateName?: string;
     timestamp?: string;
-  };
+    transactionHash?: string;
+  } | null;
 }
 
 const VotingInformationCard = ({
@@ -40,195 +32,119 @@ const VotingInformationCard = ({
 }: VotingInformationCardProps) => {
   const navigate = useNavigate();
 
-  const handleGoToVoting = () => {
-    navigate('/vote');
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Unknown date';
+    return new Date(dateString).toLocaleString();
   };
 
-  const handleViewResults = () => {
-    navigate('/results');
+  const handleVoteNow = () => {
+    navigate('/vote');
   };
 
   return (
     <>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Vote className="h-6 w-6 text-primary" />
-          <CardTitle>Voting Information</CardTitle>
-        </div>
-        <CardDescription>
-          Check your voting status and history
-        </CardDescription>
+        <CardTitle>User Information</CardTitle>
+        <CardDescription>Your personal and voting information</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Voting Status */}
-        <div className="p-4 border rounded-lg bg-muted/20">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium">Voting Status</h3>
-            {hasVoted ? (
-              <Badge variant="default" className="bg-green-500 hover:bg-green-600 px-3">
-                <CheckCircle2 className="h-3 w-3 mr-1" /> Vote Cast
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="border-red-500 text-red-500 px-3">
-                <XCircle className="h-3 w-3 mr-1" /> Not Voted
-              </Badge>
-            )}
+      <CardContent>
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" value={editedEmail} disabled />
+              <p className="text-xs text-muted-foreground">
+                Email cannot be changed
+              </p>
+            </div>
           </div>
-          
-          {hasVoted && votingDetails ? (
+        ) : (
+          <>
             <div className="space-y-4">
-              {/* Election Information */}
-              <div className="flex flex-col gap-2 p-3 bg-green-50 rounded-md">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-green-600" />
-                  <span className="font-medium">Election:</span>
-                  <span className="text-green-800">{votingDetails.election?.title || "National Election"}</span>
-                </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">
+                  Full Name
+                </Label>
+                <p className="font-medium">{editedName || 'Not set'}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Email</Label>
+                <p className="font-medium">{editedEmail || 'Not available'}</p>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm font-medium">
+                  Voting Status
+                  <div className="h-[0.5px] w-full bg-gray-200 my-2"></div>
+                </Label>
                 
-                {votingDetails.timestamp && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-600" />
-                    <span className="font-medium">Date:</span>
-                    <span className="text-green-800">
-                      {format(new Date(votingDetails.timestamp), 'PPP')}
-                    </span>
+                {hasVoted ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">You have voted</span>
+                    </div>
+                    
+                    <Alert className="bg-green-50 text-green-700 border-green-200">
+                      <AlertDescription>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="font-medium">Election:</span>{' '}
+                            {votingDetails?.electionName || 'Unknown election'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Voted for:</span>{' '}
+                            {votingDetails?.candidateName || 'Unknown candidate'}
+                          </div>
+                          <div>
+                            <span className="font-medium">When:</span>{' '}
+                            {formatDate(votingDetails?.timestamp)}
+                          </div>
+                          {votingDetails?.transactionHash && (
+                            <div className="pt-1">
+                              <span className="font-medium">Transaction:</span>{' '}
+                              <span className="font-mono text-xs bg-green-100 p-1 rounded">
+                                {votingDetails.transactionHash.substring(0, 10)}...
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="font-medium">You have not voted yet</span>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleVoteNow} 
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <Vote className="h-4 w-4" />
+                      Vote Now
+                    </Button>
+                    
+                    <p className="text-sm text-muted-foreground">
+                      Exercise your democratic right by casting your vote in the current election.
+                    </p>
                   </div>
                 )}
-                
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-green-600" />
-                  <span className="font-medium">Candidate:</span>
-                  <span className="text-green-800">
-                    {votingDetails.candidate?.name} 
-                    <span className="ml-1 text-sm text-green-600">
-                      ({votingDetails.candidate?.party})
-                    </span>
-                  </span>
-                </div>
-              </div>
-              
-              {/* Transaction Information */}
-              {votingDetails.transactionHash && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium">Transaction:</span>
-                  </p>
-                  <div className="p-2 bg-slate-50 border rounded text-xs font-mono break-all">
-                    {votingDetails.transactionHash}
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-4">
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle2 className="h-5 w-5" /> 
-                  <p className="font-medium">Vote Successfully Recorded</p>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Your vote has been securely submitted and recorded on the decentralized ledger.
-                  Thank you for participating in the democratic process.
-                </p>
-                <Button
-                  onClick={handleViewResults}
-                  size="sm" 
-                  variant="outline" 
-                  className="mt-4"
-                >
-                  View Election Results
-                </Button>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-red-50 rounded-md">
-                <div className="flex items-center text-red-500 mb-2">
-                  <XCircle className="h-5 w-5 mr-2" /> 
-                  <p className="font-medium">You have not yet cast your vote</p>
-                </div>
-                <p className="text-sm text-red-700">
-                  Please proceed to the voting page to complete the voting process. 
-                  Only registered voters with verified biometrics can participate.
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Before voting, you must complete these steps:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">1</Badge>
-                    <span className="text-sm">Register your biometrics (face and palm)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">2</Badge>
-                    <span className="text-sm">Complete identity verification</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center">3</Badge>
-                    <span className="text-sm">Cast your vote in an active election</span>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                onClick={handleGoToVoting}
-                size="sm" 
-                variant="default" 
-                className="w-full mt-2"
-              >
-                <Vote className="h-4 w-4 mr-2" />
-                Go to Voting Page
-              </Button>
-            </div>
-          )}
-        </div>
-        
-        <Separator />
-
-        {/* Personal Information */}
-        <div>
-          <h3 className="font-medium mb-2">Personal Information</h3>
-          {isEditing ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  placeholder="Enter your full name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={editedEmail} disabled />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-y-2">
-              <div className="text-sm text-muted-foreground">Full Name</div>
-              <div className="text-sm">{editedName}</div>
-              <div className="text-sm text-muted-foreground">Email</div>
-              <div className="text-sm">{editedEmail}</div>
-            </div>
-          )}
-        </div>
-
-        {/* Biometric Information */}
-        <div>
-          <h3 className="font-medium mb-2">Biometric Information</h3>
-          <div className="grid grid-cols-2 gap-y-2">
-            <div className="text-sm text-muted-foreground">Face Recognition</div>
-            <div className="text-sm">
-              <Badge variant="outline" className="border-green-500 text-green-500">Registered</Badge>
-            </div>
-            <div className="text-sm text-muted-foreground">Palm Recognition</div>
-            <div className="text-sm">
-              <Badge variant="outline" className="border-green-500 text-green-500">Registered</Badge>
-            </div>
-            <div className="text-sm text-muted-foreground">Last Verification</div>
-            <div className="text-sm">{format(new Date(), 'PPP')}</div>
-          </div>
-        </div>
+          </>
+        )}
       </CardContent>
     </>
   );

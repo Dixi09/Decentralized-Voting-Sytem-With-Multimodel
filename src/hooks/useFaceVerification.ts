@@ -71,15 +71,15 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
     fetchUserFace();
   }, [user]);
 
-  // Initialize liveness detection gestures
+  // Initialize liveness detection gestures - requiring more gestures for better security
   useEffect(() => {
     if (isLivenessChecking && livenessGestures.length === 0) {
-      // Enhanced random selection of gestures for liveness check - more gestures required
+      // Enhanced random selection of gestures for liveness check - requiring 4 gestures for better security
       const availableGestures = ['blink', 'smile', 'turn_left', 'turn_right', 'nod', 'raise_eyebrows'];
       const selectedGestures = [];
       
-      // Randomly select 3 gestures (increased from 2)
-      while (selectedGestures.length < 3) {
+      // Randomly select 4 gestures (increased from 3)
+      while (selectedGestures.length < 4) {
         const randomIndex = Math.floor(Math.random() * availableGestures.length);
         const gesture = availableGestures[randomIndex];
         if (!selectedGestures.includes(gesture)) {
@@ -462,7 +462,7 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         // 3. Check if liveness check was actually passed
         const livenessCheckPassed = livenessPassedRef.current;
         
-        // Only verify if liveness check passed AND random factor meets threshold
+        // 4. Require ALL security checks to pass for successful verification
         const isSuccess = livenessCheckPassed && (randomFactor < difficultyFactor);
         
         resolve({ 

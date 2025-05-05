@@ -8,6 +8,22 @@ export class VoteServiceDB {
    */
   public async castVote(userId: string | number, electionId: string | number, candidateId: string | number): Promise<boolean> {
     try {
+      // Check if user has already voted in this election
+      const { data: existingVote, error: checkError } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('voter_id', String(userId))
+        .eq('election_id', String(electionId))
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      
+      if (existingVote) {
+        console.error('User has already voted in this election');
+        return false;
+      }
+
+      // If no existing vote, proceed with casting the vote
       const { data, error } = await supabase.rpc('cast_vote', {
         p_voter_id: String(userId),
         p_election_id: String(electionId),
@@ -33,8 +49,8 @@ export class VoteServiceDB {
     // Create a properly typed channel name
     const channelName = `election-${electionId}`;
     
-    // Use a more specific type assertion to avoid 'never' type issues
-    const channel = supabase.channel(channelName);
+    // Use a type assertion to avoid type issues
+    const channel = supabase.channel(channelName as any);
     
     channel
       .on('postgres_changes', {

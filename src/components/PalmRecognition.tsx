@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Loader2, CheckCircle2, XCircle, RotateCcw, Scan, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -204,7 +203,8 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     ctx.strokeStyle = `rgba(0, 255, 0, ${Math.min(0.7 + detectionConfidence, 1)})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(centerX + jitter, centerY + jitter, 100, 160, 0, 0, Math.PI * 2);
+    // Make the ellipse larger to better cover the palm (increased from 100x160 to 130x200)
+    ctx.ellipse(centerX + jitter, centerY + jitter, 130, 200, 0, 0, Math.PI * 2);
     ctx.stroke();
     
     // Only draw detailed features when detection confidence is high
@@ -216,32 +216,33 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
       // Heart line - only draw if detected
       if (palmFeatures.includes("heart line")) {
         ctx.beginPath();
-        ctx.moveTo(centerX - 80, centerY - 40);
-        ctx.bezierCurveTo(centerX - 30, centerY - 60, centerX + 30, centerY - 60, centerX + 80, centerY - 30);
+        // Scale these lines proportionally with the larger ellipse
+        ctx.moveTo(centerX - 100, centerY - 50);
+        ctx.bezierCurveTo(centerX - 40, centerY - 70, centerX + 40, centerY - 70, centerX + 100, centerY - 40);
         ctx.stroke();
       }
       
       // Head line - only draw if detected
       if (palmFeatures.includes("head line")) {
         ctx.beginPath();
-        ctx.moveTo(centerX - 80, centerY);
-        ctx.bezierCurveTo(centerX - 30, centerY - 10, centerX + 30, centerY - 10, centerX + 60, centerY);
+        ctx.moveTo(centerX - 100, centerY);
+        ctx.bezierCurveTo(centerX - 40, centerY - 15, centerX + 40, centerY - 15, centerX + 80, centerY);
         ctx.stroke();
       }
       
       // Life line - only draw if detected
       if (palmFeatures.includes("life line")) {
         ctx.beginPath();
-        ctx.moveTo(centerX - 60, centerY - 80);
-        ctx.bezierCurveTo(centerX - 70, centerY - 20, centerX - 80, centerY + 40, centerX - 60, centerY + 100);
+        ctx.moveTo(centerX - 75, centerY - 100);
+        ctx.bezierCurveTo(centerX - 90, centerY - 30, centerX - 100, centerY + 50, centerX - 75, centerY + 120);
         ctx.stroke();
       }
       
       // Fate line - only draw in highest confidence
       if (detectionConfidence > 0.88) {
         ctx.beginPath();
-        ctx.moveTo(centerX, centerY + 100);
-        ctx.bezierCurveTo(centerX, centerY + 50, centerX, centerY - 50, centerX, centerY - 100);
+        ctx.moveTo(centerX, centerY + 120);
+        ctx.bezierCurveTo(centerX, centerY + 60, centerX, centerY - 60, centerX, centerY - 120);
         ctx.stroke();
       }
       
@@ -253,8 +254,9 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
       if (detectionConfidence > 0.8) {
         for (let i = 0; i < 8; i++) {
           const angle = (i / 8) * Math.PI * 2;
-          const x = centerX + Math.cos(angle) * 100;
-          const y = centerY + Math.sin(angle) * 160;
+          // Increased radius to match the larger ellipse
+          const x = centerX + Math.cos(angle) * 130;
+          const y = centerY + Math.sin(angle) * 200;
           
           ctx.beginPath();
           ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
@@ -287,7 +289,8 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     if (!videoRef.current || !canvasRef.current) return;
     
     // First ensure that we actually have a palm detected with sufficient confidence
-    if (!isPalmDetected || detectionConfidence < 0.7) {
+    // Increased required confidence from 0.7 to 0.75 for more accuracy
+    if (!isPalmDetected || detectionConfidence < 0.75) {
       toast({
         title: "No Palm Detected",
         description: "Please position your palm clearly in the center of the frame.",
@@ -509,7 +512,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         {!isCaptured ? (
           <Button
             onClick={capturePalm}
-            disabled={!isCameraReady || isVerifying || !isPalmDetected || isScanning || detectionConfidence < 0.7}
+            disabled={!isCameraReady || isVerifying || !isPalmDetected || isScanning || detectionConfidence < 0.75}
             className="gap-2"
           >
             {isVerifying ? (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import VotingContract, { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -214,11 +213,18 @@ export const useVoting = () => {
     
     try {
       setIsLoading(true);
-      const votingContract = VotingContract.getInstance();
       
-      // Check if user has already voted
-      const hasVoted = await votingContract.hasUserVoted(user.id, selectedElection.id);
-      if (hasVoted) {
+      // First check if user has already voted in this election
+      const { data: existingVote, error: checkError } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('voter_id', user.id)
+        .eq('election_id', String(selectedElection.id))
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      
+      if (existingVote) {
         toast({
           title: "Already Voted",
           description: "You have already cast your vote in this election.",
@@ -228,7 +234,9 @@ export const useVoting = () => {
         return;
       }
       
-      // Cast the vote
+      const votingContract = VotingContract.getInstance();
+      
+      // Cast the vote using both methods to ensure consistency
       const transaction = await votingContract.castVote(
         user.id, 
         selectedElection.id, 
