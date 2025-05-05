@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
@@ -12,15 +11,16 @@ interface FaceRecognitionProps {
   onVerified: () => void;
   onError?: () => void;
   className?: string;
+  isRegistrationMode?: boolean; // Added this prop to the interface
 }
 
-const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProps) => {
+const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = false }: FaceRecognitionProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [faceLandmarks, setFaceLandmarks] = useState<string[]>([]);
-  const [isRegistrationMode, setIsRegistrationMode] = useState(false);
+  const [isRegistrationMode, setIsRegistrationMode] = useState(isRegistrationMode);
   const [isScanning, setIsScanning] = useState(false);
 
   const { 
@@ -37,13 +37,6 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
   } = useFaceVerification({ 
     onVerified,
     isRegistrationMode 
-  });
-
-  const { startWebcam, stopWebcam, cameraError } = useCamera({
-    onError: () => {
-      setError('Could not access camera. Please ensure you have granted camera permissions.');
-      if (onError) onError();
-    }
   });
 
   // Initialize camera
@@ -276,7 +269,7 @@ const FaceRecognition = ({ onVerified, onError, className }: FaceRecognitionProp
       </div>
 
       {!hasReferenceImage && !isRegistrationMode && (
-        <Alert variant="warning" className="w-full max-w-md bg-yellow-50 text-yellow-800 border-yellow-200">
+        <Alert variant="destructive" className="w-full max-w-md">
           <AlertDescription>
             You need to register your face before you can vote. Please click the "Register Your Face" button above.
           </AlertDescription>

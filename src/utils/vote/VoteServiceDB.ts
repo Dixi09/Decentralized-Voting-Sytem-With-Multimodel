@@ -33,8 +33,8 @@ export class VoteServiceDB {
     // Create a properly typed channel name
     const channelName = `election-${electionId}`;
     
-    // Use 'any' type to work around the type issue
-    const channel = supabase.channel(channelName as any);
+    // Use type assertion to work around the type issue
+    const channel = supabase.channel(channelName as string);
     
     channel
       .on('postgres_changes', {
