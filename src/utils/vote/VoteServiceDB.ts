@@ -8,12 +8,17 @@ export class VoteServiceDB {
    */
   public async castVote(userId: string | number, electionId: string | number, candidateId: string | number): Promise<boolean> {
     try {
+      // Convert all IDs to strings to ensure consistency with database types
+      const voterIdStr = String(userId);
+      const electionIdStr = String(electionId);
+      const candidateIdStr = String(candidateId);
+      
       // Check if user has already voted in this election
       const { data: existingVote, error: checkError } = await supabase
         .from('votes')
         .select('id')
-        .eq('voter_id', String(userId))
-        .eq('election_id', String(electionId))
+        .eq('voter_id', voterIdStr)
+        .eq('election_id', electionIdStr)
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -25,15 +30,15 @@ export class VoteServiceDB {
 
       // If no existing vote, proceed with casting the vote
       const { data, error } = await supabase.rpc('cast_vote', {
-        p_voter_id: String(userId),
-        p_election_id: String(electionId),
-        p_candidate_id: String(candidateId)
+        p_voter_id: voterIdStr,
+        p_election_id: electionIdStr,
+        p_candidate_id: candidateIdStr
       });
 
       if (error) throw error;
 
       // Subscribe to real-time updates
-      this.subscribeToVoteUpdates(electionId);
+      this.subscribeToVoteUpdates(electionIdStr);
       
       return true;
     } catch (error) {
@@ -45,19 +50,19 @@ export class VoteServiceDB {
   /**
    * Subscribe to real-time updates
    */
-  private subscribeToVoteUpdates(electionId: string | number) {
+  private subscribeToVoteUpdates(electionId: string) {
     // Create a properly typed channel name
     const channelName = `election-${electionId}`;
     
-    // Fix: Cast the channel name to any to avoid type errors
-    const channel = supabase.channel(channelName as any);
+    // Fix: Use RealtimeChannel properly with explicit type
+    const channel = supabase.channel(channelName);
     
     channel
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'votes',
-        filter: `election_id=eq.${String(electionId)}`
+        filter: `election_id=eq.${electionId}`
       }, () => {
         // Trigger a refresh of the election data
         this.getElection(electionId);
@@ -66,7 +71,7 @@ export class VoteServiceDB {
   }
 
   // Helper method to get election by ID (stub for the subscribe callback)
-  private async getElection(electionId: string | number) {
+  private async getElection(electionId: string) {
     // This is just a placeholder method to satisfy the subscribeToVoteUpdates callback
     // The actual implementation would use the ElectionServiceDB
     console.log(`Election ${electionId} data should be refreshed`);
