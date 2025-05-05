@@ -28,6 +28,8 @@ const Vote = () => {
     isCheckingEligibility,
     handleFaceVerificationSuccess,
     handleFaceVerificationError,
+    handlePalmVerificationSuccess,
+    handlePalmVerificationError,
     handleOTPVerificationSuccess,
     handleOTPVerificationError,
     handleSelectElection,
@@ -44,14 +46,6 @@ const Vote = () => {
     { id: 6, label: "Vote" },
     { id: 7, label: "Confirm" }
   ];
-
-  const handlePalmVerificationSuccess = () => {
-    setStep(4); // Move to OTP step after palm verification
-  };
-
-  const handlePalmVerificationError = () => {
-    setStep(2); // Go back to face verification if palm verification fails
-  };
   
   const renderEligibilityCheck = () => {
     if (isCheckingEligibility) {

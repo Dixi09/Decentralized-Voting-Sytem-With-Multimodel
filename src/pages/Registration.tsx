@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { User, Camera, Mail, Phone, Home, Calendar, FileCheck } from 'lucide-react';
+import { User, Camera, Mail, Phone, Home, Calendar, Hand, CheckCircle2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import StepIndicator from '@/components/vote/StepIndicator';
+import PalmRecognition from '@/components/PalmRecognition';
+import FaceRecognition from '@/components/FaceRecognition';
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -24,15 +26,14 @@ const Registration = () => {
     state: '',
     postalCode: '',
     dateOfBirth: '',
-    idNumber: '',
     selfieUploaded: false,
-    idUploaded: false
+    palmVerified: false
   });
   
   const steps = [
     { id: 1, label: "Personal" },
     { id: 2, label: "Address" },
-    { id: 3, label: "Identity" },
+    { id: 3, label: "Biometrics" },
     { id: 4, label: "Confirm" }
   ];
   
@@ -43,18 +44,32 @@ const Registration = () => {
     }));
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'selfieUploaded' | 'idUploaded') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       // In a real app, you would upload this file to a server
-      updateFormData(fieldName, true);
+      updateFormData('selfieUploaded', true);
       toast({
-        title: fieldName === 'selfieUploaded' ? "Photo Uploaded" : "ID Document Uploaded",
-        description: fieldName === 'selfieUploaded' ? 
-          "Your photo has been successfully uploaded." : 
-          "Your ID document has been successfully uploaded.",
+        title: "Photo Uploaded",
+        description: "Your photo has been successfully uploaded.",
       });
     }
+  };
+  
+  const handleFaceVerified = () => {
+    updateFormData('selfieUploaded', true);
+    toast({
+      title: "Face Registration Successful",
+      description: "Your face has been successfully registered.",
+    });
+  };
+  
+  const handlePalmVerified = () => {
+    updateFormData('palmVerified', true);
+    toast({
+      title: "Palm Registration Successful",
+      description: "Your palm biometrics have been successfully registered.",
+    });
   };
   
   const validateCurrentStep = () => {
@@ -103,10 +118,10 @@ const Registration = () => {
     }
     
     if (step === 3) {
-      if (!formData.dateOfBirth || !formData.idNumber) {
+      if (!formData.dateOfBirth) {
         toast({
           title: "Incomplete Information",
-          description: "Please provide your date of birth and ID number.",
+          description: "Please provide your date of birth.",
           variant: "destructive",
         });
         return false;
@@ -114,17 +129,17 @@ const Registration = () => {
       
       if (!formData.selfieUploaded) {
         toast({
-          title: "Photo Required",
-          description: "Please upload a photo for facial recognition.",
+          title: "Face Recognition Required",
+          description: "Please complete the face recognition step.",
           variant: "destructive",
         });
         return false;
       }
       
-      if (!formData.idUploaded) {
+      if (!formData.palmVerified) {
         toast({
-          title: "ID Document Required",
-          description: "Please upload your government ID document.",
+          title: "Palm Verification Required",
+          description: "Please complete the palm verification step.",
           variant: "destructive",
         });
         return false;
@@ -280,9 +295,9 @@ const Registration = () => {
     );
   };
   
-  const renderIdentityStep = () => {
+  const renderBiometricsStep = () => {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="dateOfBirth">Date of Birth</Label>
           <div className="relative">
@@ -298,78 +313,45 @@ const Registration = () => {
           </div>
         </div>
         
+        {/* Face Registration */}
         <div className="space-y-2">
-          <Label htmlFor="idNumber">Government ID Number</Label>
-          <Input
-            id="idNumber"
-            value={formData.idNumber}
-            onChange={(e) => updateFormData('idNumber', e.target.value)}
-            placeholder="Enter your government ID number"
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            Enter your national ID, driver's license, or passport number.
-          </p>
+          <Label>Face Registration</Label>
+          <Card className="p-4">
+            <div className="mb-4">
+              <p className="text-sm mb-2">Please register your face for identity verification</p>
+              {formData.selfieUploaded ? (
+                <div className="bg-green-50 text-green-700 p-3 rounded-md flex items-center">
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  <span>Face successfully registered</span>
+                </div>
+              ) : (
+                <FaceRecognition 
+                  onVerified={handleFaceVerified}
+                  isRegistrationMode={true}
+                />
+              )}
+            </div>
+          </Card>
         </div>
         
+        {/* Palm Registration */}
         <div className="space-y-2">
-          <Label htmlFor="selfie">Upload Photo for Facial Recognition</Label>
-          <div className="border-2 border-dashed rounded-lg p-6 text-center">
-            <Camera className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm mb-2">
-              Upload a clear photo of your face for identity verification
-            </p>
-            <Input
-              id="selfie"
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileChange(e, 'selfieUploaded')}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById('selfie')?.click()}
-            >
-              Choose File
-            </Button>
-            <p className="text-xs mt-2 text-muted-foreground">
-              {formData.selfieUploaded ? "Photo uploaded" : "No file chosen"}
-            </p>
-          </div>
-        </div>
-        
-        {/* Added ID document upload section */}
-        <div className="space-y-2">
-          <Label htmlFor="idDocument">Upload Government ID Document</Label>
-          <div className="border-2 border-dashed rounded-lg p-6 text-center">
-            <FileCheck className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm mb-2">
-              Upload a scan/photo of your government ID document
-            </p>
-            <Input
-              id="idDocument"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => handleFileChange(e, 'idUploaded')}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById('idDocument')?.click()}
-            >
-              Choose File
-            </Button>
-            <p className="text-xs mt-2 text-muted-foreground">
-              {formData.idUploaded ? "Document uploaded" : "No file chosen"}
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Accepted formats: JPG, PNG, PDF (max 5MB)
-          </p>
+          <Label>Palm Registration</Label>
+          <Card className="p-4">
+            <div className="mb-4">
+              <p className="text-sm mb-2">Please register your palm biometrics for additional security</p>
+              {formData.palmVerified ? (
+                <div className="bg-green-50 text-green-700 p-3 rounded-md flex items-center">
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  <span>Palm successfully registered</span>
+                </div>
+              ) : (
+                <PalmRecognition 
+                  onVerified={handlePalmVerified}
+                />
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     );
@@ -407,12 +389,10 @@ const Registration = () => {
           <div className="grid grid-cols-2 gap-y-2 text-sm">
             <div className="text-muted-foreground">Date of Birth:</div>
             <div>{formData.dateOfBirth}</div>
-            <div className="text-muted-foreground">ID Number:</div>
-            <div>{formData.idNumber}</div>
-            <div className="text-muted-foreground">Photo:</div>
-            <div>{formData.selfieUploaded ? "Uploaded" : "Not uploaded"}</div>
-            <div className="text-muted-foreground">ID Document:</div>
-            <div>{formData.idUploaded ? "Uploaded" : "Not uploaded"}</div>
+            <div className="text-muted-foreground">Face Registration:</div>
+            <div>{formData.selfieUploaded ? "Completed" : "Not completed"}</div>
+            <div className="text-muted-foreground">Palm Registration:</div>
+            <div>{formData.palmVerified ? "Completed" : "Not completed"}</div>
           </div>
         </div>
         
@@ -439,7 +419,7 @@ const Registration = () => {
       case 2:
         return renderAddressStep();
       case 3:
-        return renderIdentityStep();
+        return renderBiometricsStep();
       case 4:
         return renderConfirmationStep();
       default:
@@ -463,13 +443,13 @@ const Registration = () => {
               <CardTitle>
                 {step === 1 && "Personal Information"}
                 {step === 2 && "Residential Address"}
-                {step === 3 && "Identity Verification"}
+                {step === 3 && "Biometric Verification"}
                 {step === 4 && "Review and Submit"}
               </CardTitle>
               <CardDescription>
                 {step === 1 && "Enter your personal information"}
                 {step === 2 && "Provide your residential address"}
-                {step === 3 && "Verify your identity with government ID and a photo"}
+                {step === 3 && "Register your biometrics for secure voting"}
                 {step === 4 && "Review and confirm your information"}
               </CardDescription>
             </CardHeader>

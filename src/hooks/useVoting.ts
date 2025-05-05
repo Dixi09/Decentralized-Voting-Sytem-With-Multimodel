@@ -4,6 +4,7 @@ import VotingContract, { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { voteServiceDB } from '@/utils/vote/VoteServiceDB';
 
 export const useVoting = () => {
   const { user } = useAuth();
@@ -15,6 +16,7 @@ export const useVoting = () => {
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [isBiometricsRegistered, setIsBiometricsRegistered] = useState(false);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     // Check if user has registered biometrics
@@ -70,6 +72,72 @@ export const useVoting = () => {
     
     fetchElections();
   }, []);
+
+  // Set up real-time subscription for vote counting
+  useEffect(() => {
+    if (!selectedElection) return;
+
+    // Subscribe to vote changes for the selected election
+    const channel = supabase.channel(`public:votes:election_id=eq.${selectedElection.id}` as any)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'votes',
+          filter: `election_id=eq.${selectedElection.id}`
+        }, 
+        () => {
+          // When votes change, refresh the candidate data
+          refreshCandidateVoteCounts(selectedElection.id);
+        }
+      )
+      .subscribe();
+
+    // Initial load of vote counts
+    refreshCandidateVoteCounts(selectedElection.id);
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedElection]);
+
+  const refreshCandidateVoteCounts = async (electionId: number | string) => {
+    try {
+      // Get vote counts for each candidate in this election
+      const { data, error } = await supabase
+        .from('votes')
+        .select('candidate_id')
+        .eq('election_id', String(electionId));
+
+      if (error) throw error;
+
+      // Count votes per candidate
+      const counts: Record<string, number> = {};
+      data.forEach(vote => {
+        const candidateId = vote.candidate_id;
+        if (candidateId) {
+          counts[candidateId] = (counts[candidateId] || 0) + 1;
+        }
+      });
+
+      setVoteCounts(counts);
+
+      // Update the election candidates with new vote counts if we have the selected election
+      if (selectedElection) {
+        const updatedCandidates = selectedElection.candidates.map(candidate => ({
+          ...candidate,
+          voteCount: counts[String(candidate.id)] || 0
+        }));
+
+        setSelectedElection({
+          ...selectedElection,
+          candidates: updatedCandidates
+        });
+      }
+    } catch (err) {
+      console.error('Error refreshing vote counts:', err);
+    }
+  };
   
   const handleFaceVerificationSuccess = () => {
     toast({
@@ -86,6 +154,23 @@ export const useVoting = () => {
       variant: "destructive",
     });
     setStep(1); // Reset to step 1
+  };
+  
+  const handlePalmVerificationSuccess = () => {
+    toast({
+      title: "Palm Verification Successful",
+      description: "Your identity has been verified.",
+    });
+    setStep(4); // Move to OTP verification step
+  };
+  
+  const handlePalmVerificationError = () => {
+    toast({
+      title: "Palm Verification Failed", 
+      description: "We couldn't verify your palm. Please try again.",
+      variant: "destructive",
+    });
+    setStep(2); // Reset to face verification
   };
   
   const handleOTPVerificationSuccess = () => {
@@ -106,6 +191,7 @@ export const useVoting = () => {
   
   const handleSelectElection = (election: Election) => {
     setSelectedElection(election);
+    refreshCandidateVoteCounts(election.id);
     setStep(6); // Move to candidate selection
   };
   
@@ -149,12 +235,22 @@ export const useVoting = () => {
         selectedCandidate.id
       );
       
+      // Also use the VoteServiceDB to ensure real-time updates work
+      await voteServiceDB.castVote(
+        user.id, 
+        selectedElection.id, 
+        selectedCandidate.id
+      );
+      
       setTransactionHash(transaction.transactionHash);
       toast({
         title: "Vote Cast Successfully",
         description: "Your vote has been recorded on the blockchain.",
       });
       setStep(7); // Move to confirmation step
+      
+      // Refresh vote counts after successful vote
+      refreshCandidateVoteCounts(selectedElection.id);
     } catch (error) {
       console.error('Error casting vote:', error);
       toast({
@@ -177,8 +273,11 @@ export const useVoting = () => {
     transactionHash,
     isBiometricsRegistered,
     isCheckingEligibility,
+    voteCounts,
     handleFaceVerificationSuccess,
     handleFaceVerificationError,
+    handlePalmVerificationSuccess,
+    handlePalmVerificationError,
     handleOTPVerificationSuccess,
     handleOTPVerificationError,
     handleSelectElection,
