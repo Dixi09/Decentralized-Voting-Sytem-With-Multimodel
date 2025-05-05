@@ -51,10 +51,10 @@ export class VoteServiceDB {
    * Subscribe to real-time updates
    */
   private subscribeToVoteUpdates(electionId: string) {
-    // Create a properly typed channel name
+    // Create channel name
     const channelName = `election-${electionId}`;
     
-    // Fix: Use RealtimeChannel properly with explicit type
+    // Create channel with correct typing
     const channel = supabase.channel(channelName);
     
     channel
