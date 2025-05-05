@@ -24,7 +24,7 @@ const Home = () => {
         <div className="container px-4 mx-auto">
           <div className="max-w-4xl mx-auto text-center mb-12">
             <h1 className="text-4xl font-bold mb-6 sm:text-5xl">
-              Secure Blockchain Voting System with Facial Recognition
+              Secure Decentralized Voting System with Multi-Model Biometric Verification
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
               A transparent, secure, and tamper-proof electoral system using cutting-edge technology
