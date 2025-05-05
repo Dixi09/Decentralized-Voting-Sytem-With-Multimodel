@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
@@ -11,7 +12,7 @@ interface FaceRecognitionProps {
   onVerified: () => void;
   onError?: () => void;
   className?: string;
-  isRegistrationMode?: boolean; // Added this prop to the interface
+  isRegistrationMode?: boolean;
 }
 
 const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = false }: FaceRecognitionProps) => {
@@ -20,7 +21,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [faceLandmarks, setFaceLandmarks] = useState<string[]>([]);
-  const [isRegistrationMode, setIsRegistrationMode] = useState(isRegistrationMode);
+  const [registrationModeState, setRegistrationModeState] = useState(isRegistrationMode);
   const [isScanning, setIsScanning] = useState(false);
 
   const { 
@@ -97,7 +98,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
   }, [isCameraReady, isCaptured]);
 
   const handleCapture = () => {
-    if (isRegistrationMode) {
+    if (registrationModeState) {
       captureImage(videoRef, canvasRef);
       return;
     }
@@ -120,7 +121,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
   };
 
   const handleRegistrationMode = () => {
-    setIsRegistrationMode(true);
+    setRegistrationModeState(true);
     setError(null);
     toast({
       title: "Face Registration Mode",
@@ -215,7 +216,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
       )}
 
       <div className="flex gap-2">
-        {!hasReferenceImage && !isRegistrationMode && (
+        {!hasReferenceImage && !registrationModeState && (
           <Button
             onClick={handleRegistrationMode}
             variant="default"
@@ -226,7 +227,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
           </Button>
         )}
         
-        {(hasReferenceImage || isRegistrationMode) && !isCaptured && (
+        {(hasReferenceImage || registrationModeState) && !isCaptured && (
           <Button
             onClick={handleCapture}
             disabled={!isCameraReady || isVerifying || isRegistering || isScanning}
@@ -235,12 +236,12 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
             {isVerifying || isRegistering ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {isRegistrationMode ? "Registering..." : "Verifying..."}
+                {registrationModeState ? "Registering..." : "Verifying..."}
               </>
             ) : (
               <>
                 <Camera className="w-4 h-4" />
-                {isRegistrationMode ? "Register Face" : "Capture Face"}
+                {registrationModeState ? "Register Face" : "Capture Face"}
               </>
             )}
           </Button>
@@ -257,9 +258,9 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
           </Button>
         )}
 
-        {isRegistrationMode && !isCaptured && (
+        {registrationModeState && !isCaptured && (
           <Button
-            onClick={() => setIsRegistrationMode(false)}
+            onClick={() => setRegistrationModeState(false)}
             variant="outline"
             disabled={isVerifying || isRegistering}
           >
@@ -268,7 +269,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
         )}
       </div>
 
-      {!hasReferenceImage && !isRegistrationMode && (
+      {!hasReferenceImage && !registrationModeState && (
         <Alert variant="destructive" className="w-full max-w-md">
           <AlertDescription>
             You need to register your face before you can vote. Please click the "Register Your Face" button above.
