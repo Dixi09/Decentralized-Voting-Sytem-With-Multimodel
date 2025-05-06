@@ -115,28 +115,8 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       
       console.log('Casting vote with IDs:', { userId, electionId, candidateId });
       
-      // Use a Promise.all to parallelize the blockchain and database operations
-      const votingContract = VotingContract.getInstance();
-      const [transaction, dbResult] = await Promise.all([
-        // Cast vote on blockchain
-        votingContract.castVote(
-          userId, 
-          selectedElection.id, 
-          selectedCandidate.id
-        ),
-        // Also use the VoteServiceDB for database persistence and real-time updates
-        voteServiceDB.castVote(
-          userId, 
-          electionId, 
-          candidateId
-        )
-      ]);
-      
-      console.log('Vote results:', { transaction, dbResult });
-      
-      if (!transaction) {
-        throw new Error('Failed to record vote on blockchain. Please try again.');
-      }
+      // Use the VoteServiceDB for database persistence
+      const dbResult = await voteServiceDB.castVote(userId, electionId, candidateId);
       
       if (!dbResult) {
         // Check if user has already voted
@@ -148,7 +128,8 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
           .maybeSingle();
         
         if (existingVote) {
-          setTransactionHash(existingVote.transaction_hash || transaction.transactionHash);
+          // If there's an existing vote, show it as a success but mention they already voted
+          setTransactionHash(existingVote.transaction_hash || `tx-${Date.now()}`);
           toast({
             title: "Already Voted",
             description: "You have already cast a vote in this election.",
@@ -160,10 +141,19 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         }
       }
       
-      setTransactionHash(transaction.transactionHash);
+      // Get the transaction hash from the recently inserted vote
+      const { data: voteTx } = await supabase
+        .from('votes')
+        .select('transaction_hash')
+        .eq('voter_id', userId)
+        .eq('election_id', electionId)
+        .maybeSingle();
+        
+      setTransactionHash(voteTx?.transaction_hash || `tx-${Date.now()}`);
+      
       toast({
         title: "Vote Cast Successfully",
-        description: "Your vote has been securely recorded on the blockchain.",
+        description: "Your vote has been securely recorded.",
       });
       setStep(7); // Move to confirmation step
       

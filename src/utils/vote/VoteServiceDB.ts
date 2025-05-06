@@ -8,6 +8,8 @@ export class VoteServiceDB {
    */
   public async castVote(userId: string, electionId: string, candidateId: string): Promise<boolean> {
     try {
+      console.log('VoteServiceDB: Attempting to cast vote with:', { userId, electionId, candidateId });
+      
       // Check if user has already voted in this election
       const { data: existingVote, error: checkError } = await supabase
         .from('votes')
@@ -26,13 +28,27 @@ export class VoteServiceDB {
         return false;
       }
 
-      // If no existing vote, proceed with casting the vote
+      // Verify that the candidate exists in this election
+      const { data: candidate, error: candidateError } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', candidateId)
+        .eq('election_id', electionId)
+        .single();
+        
+      if (candidateError || !candidate) {
+        console.error('Error verifying candidate:', candidateError || 'Candidate not found');
+        throw new Error(candidateError?.message || 'Candidate not found in this election');
+      }
+
+      // If no existing vote and candidate is valid, proceed with casting the vote
       const { data, error } = await supabase
         .from('votes')
         .insert({
           voter_id: userId,
           election_id: electionId,
-          candidate_id: candidateId
+          candidate_id: candidateId,
+          transaction_hash: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
         });
 
       if (error) {
@@ -40,6 +56,8 @@ export class VoteServiceDB {
         throw error;
       }
 
+      console.log('Vote successfully cast:', { userId, electionId, candidateId });
+      
       // Subscribe to real-time updates
       this.subscribeToVoteUpdates(electionId);
       

@@ -60,6 +60,8 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         setIsLoading(true);
         const votingContract = VotingContract.getInstance();
         const electionList = await votingContract.getElections();
+        
+        console.log('Fetched elections:', electionList);
         setElections(electionList);
       } catch (error) {
         console.error('Error fetching elections:', error);
@@ -84,7 +86,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
     console.log('Setting up real-time subscription for election:', electionId);
     
     // Subscribe to vote changes for the selected election
-    const channel = supabase.channel(`public:votes:election_id=eq.${electionId}`)
+    const channel = supabase.channel(`election-votes-${electionId}`)
       .on('postgres_changes', 
         { 
           event: '*', 

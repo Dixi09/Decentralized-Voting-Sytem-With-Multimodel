@@ -16,10 +16,12 @@ class ElectionService {
   /**
    * Get a specific election by ID
    */
-  public async getElection(id: number): Promise<Election | undefined> {
+  public async getElection(id: number | string): Promise<Election | undefined> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const election = this.elections.find(e => e.id === id);
+        // Convert id to number for comparison if it's a string
+        const numId = typeof id === 'string' ? parseInt(id) : id;
+        const election = this.elections.find(e => e.id === numId);
         resolve(election);
       }, 300);
     });
@@ -28,26 +30,34 @@ class ElectionService {
   /**
    * Check if a user has voted in a specific election
    */
-  public async hasUserVoted(userId: string, electionId: number): Promise<boolean> {
+  public async hasUserVoted(userId: string, electionId: number | string): Promise<boolean> {
     try {
+      // Ensure electionId is a string for database query
+      const strElectionId = String(electionId);
+      
+      console.log(`Checking if user ${userId} has voted in election ${strElectionId}`);
+      
       // Check in Supabase if the user has voted
       const { count, error } = await supabase
         .from('votes')
         .select('*', { count: 'exact', head: true })
         .eq('voter_id', userId)
-        .eq('election_id', electionId.toString());
+        .eq('election_id', strElectionId);
       
       if (error) {
         console.error('Error checking vote status:', error);
         // Fall back to local check if database query fails
-        return this.hasVoted[userId]?.has(electionId) || false;
+        const numId = typeof electionId === 'string' ? parseInt(electionId) : electionId;
+        return this.hasVoted[userId]?.has(numId) || false;
       }
       
+      console.log(`Vote count for user ${userId} in election ${strElectionId}: ${count}`);
       return count !== null && count > 0;
     } catch (error) {
       console.error('Error checking user vote status:', error);
       // Fall back to local check
-      return this.hasVoted[userId]?.has(electionId) || false;
+      const numId = typeof electionId === 'string' ? parseInt(electionId) : electionId;
+      return this.hasVoted[userId]?.has(numId) || false;
     }
   }
 

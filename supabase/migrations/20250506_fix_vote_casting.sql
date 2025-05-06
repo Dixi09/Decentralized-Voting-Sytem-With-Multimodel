@@ -2,6 +2,16 @@
 -- Enable Row Level Security on votes table if not already enabled
 ALTER TABLE IF EXISTS public.votes ENABLE ROW LEVEL SECURITY;
 
+-- Make sure tables use the REPLICA IDENTITY FULL for proper change tracking
+ALTER TABLE IF EXISTS public.votes REPLICA IDENTITY FULL;
+ALTER TABLE IF EXISTS public.candidates REPLICA IDENTITY FULL;
+ALTER TABLE IF EXISTS public.elections REPLICA IDENTITY FULL;
+
+-- Add realtime support for votes table
+ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.candidates;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.elections;
+
 -- Create policy to allow authenticated users to insert their own votes
 CREATE POLICY IF NOT EXISTS "Users can insert their own votes" 
 ON public.votes 
@@ -19,10 +29,6 @@ CREATE POLICY IF NOT EXISTS "Users can view all votes for results"
 ON public.votes 
 FOR SELECT 
 USING (true);
-
--- Enable realtime support for votes table
-ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
-ALTER TABLE public.votes REPLICA IDENTITY FULL;
 
 -- Create a function to check if a user has voted in an election
 CREATE OR REPLACE FUNCTION public.has_user_voted(p_user_id TEXT, p_election_id TEXT)

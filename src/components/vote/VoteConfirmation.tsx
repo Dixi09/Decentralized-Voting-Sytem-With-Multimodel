@@ -28,14 +28,20 @@ const VoteConfirmation = ({
       
       try {
         const candidateId = String(candidate.id);
+        console.log('Fetching vote count for candidate:', candidateId);
+        
         const { data, error } = await supabase
           .from('votes')
           .select('id')
           .eq('candidate_id', candidateId);
           
-        if (!error) {
-          setVoteCount(data?.length || 0);
+        if (error) {
+          console.error('Error fetching vote count:', error);
+          return;
         }
+        
+        console.log('Vote count data:', data);
+        setVoteCount(data?.length || 0);
       } catch (err) {
         console.error('Error fetching vote count:', err);
       }
@@ -55,17 +61,17 @@ const VoteConfirmation = ({
         </div>
         <h3 className="text-xl font-semibold mb-2">Thank You for Voting</h3>
         <p className="text-center text-muted-foreground mb-4">
-          Your vote has been securely recorded on the blockchain.
+          Your vote has been securely recorded.
         </p>
         
         <div className="w-full p-4 bg-slate-50 rounded-lg border mb-4">
           <div className="mb-2">
             <p className="text-sm font-medium">Election</p>
-            <p className="text-sm">{election?.title}</p>
+            <p className="text-sm">{election?.title || 'N/A'}</p>
           </div>
           <div className="mb-2">
             <p className="text-sm font-medium">Candidate</p>
-            <p className="text-sm">{candidate?.name} ({candidate?.party})</p>
+            <p className="text-sm">{candidate?.name || 'N/A'} ({candidate?.party || 'N/A'})</p>
             {voteCount !== null && (
               <p className="text-xs text-green-600 mt-1">
                 Current vote count: {voteCount}
@@ -76,7 +82,7 @@ const VoteConfirmation = ({
           <div>
             <p className="text-sm font-medium">Transaction Hash</p>
             <p className="text-xs font-mono truncate text-muted-foreground">
-              {transactionHash}
+              {transactionHash || 'Transaction processing...'}
             </p>
           </div>
         </div>

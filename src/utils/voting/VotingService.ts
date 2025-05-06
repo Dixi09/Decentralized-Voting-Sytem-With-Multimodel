@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { VoteTransaction } from "../VotingContract";
-import { storeVotingHistory } from "../supabaseStorage";
+import { storeVotingHistory } from "../storage/supabaseStorageService";
 
 class VotingService {
   private transactions: VoteTransaction[] = [];
@@ -47,8 +47,9 @@ class VotingService {
           this.hasVoted[userId].add(electionId);
           
           // Create transaction record
+          const transactionHash = `tx-${Math.random().toString(16).substring(2, 42)}`;
           const transaction: VoteTransaction = {
-            transactionHash: `0x${Math.random().toString(16).substring(2, 42)}`,
+            transactionHash,
             blockNumber: Math.floor(Math.random() * 1000000),
             timestamp: new Date(),
             voter: userId,
@@ -60,11 +61,11 @@ class VotingService {
           
           // Store voting history in Supabase
           try {
-            // Store vote in database
+            // Store vote in database - always convert IDs to strings for consistency with UUID format
             await supabase.from('votes').insert({
               voter_id: userId,
-              election_id: electionId.toString(),
-              candidate_id: candidateId.toString(),
+              election_id: String(electionId),
+              candidate_id: String(candidateId),
               transaction_hash: transaction.transactionHash
             });
 
@@ -91,7 +92,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
-            storeVotingHistory(candidate.id, electionId, votingHistoryData)
+            storeVotingHistory(String(candidate.id), String(electionId), votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
           } catch (error) {
@@ -103,7 +104,7 @@ class VotingService {
         } catch (error) {
           reject(error);
         }
-      }, 1500); // Longer delay to simulate blockchain confirmation
+      }, 1000); // Shorter delay to simulate faster blockchain confirmation
     });
   }
   
@@ -112,7 +113,7 @@ class VotingService {
    */
   public async getVoteTransactions(): Promise<VoteTransaction[]> {
     return new Promise((resolve) => {
-      setTimeout(() => resolve(this.transactions), 500);
+      setTimeout(() => resolve(this.transactions), 300);
     });
   }
 
@@ -123,7 +124,9 @@ class VotingService {
       title: id === 1 ? "Student Body President Election" : "Department Representative Election",
       isActive: true,
       candidates: [
-        { id: 1, name: "Test Candidate", party: "Test Party", voteCount: 0 }
+        { id: 1, name: "Test Candidate 1", party: "Test Party A", voteCount: 0 },
+        { id: 2, name: "Test Candidate 2", party: "Test Party B", voteCount: 0 },
+        { id: 3, name: "Test Candidate 3", party: "Test Party C", voteCount: 0 }
       ]
     };
   }
