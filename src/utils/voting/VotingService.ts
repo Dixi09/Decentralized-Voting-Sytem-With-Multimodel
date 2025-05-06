@@ -92,6 +92,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
+            // Fix: Convert candidateId and electionId to numbers before passing to storeVotingHistory
             storeVotingHistory(Number(candidate.id), Number(electionId), votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
