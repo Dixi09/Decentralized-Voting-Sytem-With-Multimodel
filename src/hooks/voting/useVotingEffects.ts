@@ -16,7 +16,8 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
     setIsBiometricsRegistered,
     isCheckingEligibility,
     setIsCheckingEligibility,
-    setVoteCounts
+    setVoteCounts,
+    setSelectedElection
   } = state;
 
   // Check biometrics registration status
@@ -30,7 +31,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         const { data, error } = await supabase
           .from('user_biometrics')
           .select('face_image_url')
-          .eq('user_id', user.id)
+          .eq('user_id', String(user.id))
           .maybeSingle();
 
         if (error) throw error;
@@ -79,8 +80,10 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
   useEffect(() => {
     if (!selectedElection) return;
 
-    // Subscribe to vote changes for the selected election
     const electionId = String(selectedElection.id);
+    console.log('Setting up real-time subscription for election:', electionId);
+    
+    // Subscribe to vote changes for the selected election
     const channel = supabase.channel(`public:votes:election_id=eq.${electionId}`)
       .on('postgres_changes', 
         { 
@@ -89,23 +92,28 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
           table: 'votes',
           filter: `election_id=eq.${electionId}`
         }, 
-        () => {
+        (payload) => {
+          console.log('Vote change detected:', payload);
           // When votes change, refresh the candidate data
           refreshCandidateVoteCounts(electionId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
     // Initial load of vote counts
     refreshCandidateVoteCounts(electionId);
 
     return () => {
+      console.log('Cleaning up vote subscription');
       supabase.removeChannel(channel);
     };
   }, [selectedElection]);
 
   // Helper function to refresh candidate vote counts
   const refreshCandidateVoteCounts = async (electionId: string) => {
+    console.log('Refreshing vote counts for election:', electionId);
     try {
       // Get vote counts for each candidate in this election
       const { data, error } = await supabase
@@ -113,7 +121,12 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         .select('candidate_id')
         .eq('election_id', electionId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching votes:', error);
+        throw error;
+      }
+
+      console.log('Votes data:', data);
 
       // Count votes per candidate
       const counts: Record<string, number> = {};
@@ -124,6 +137,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         }
       });
 
+      console.log('Vote counts:', counts);
       setVoteCounts(counts);
 
       // Update the election candidates with new vote counts if we have the selected election
@@ -133,7 +147,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
           voteCount: counts[String(candidate.id)] || 0
         }));
 
-        state.setSelectedElection({
+        setSelectedElection({
           ...selectedElection,
           candidates: updatedCandidates
         });

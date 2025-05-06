@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { Election, Candidate } from '@/utils/VotingContract';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VoteConfirmationProps {
   election: Election | null;
@@ -19,6 +20,29 @@ const VoteConfirmation = ({
   transactionHash 
 }: VoteConfirmationProps) => {
   const navigate = useNavigate();
+  const [voteCount, setVoteCount] = useState<number | null>(null);
+  
+  useEffect(() => {
+    const fetchVoteCount = async () => {
+      if (!candidate) return;
+      
+      try {
+        const candidateId = String(candidate.id);
+        const { data, error } = await supabase
+          .from('votes')
+          .select('id')
+          .eq('candidate_id', candidateId);
+          
+        if (!error) {
+          setVoteCount(data?.length || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching vote count:', err);
+      }
+    };
+    
+    fetchVoteCount();
+  }, [candidate]);
   
   return (
     <Card>
@@ -42,6 +66,11 @@ const VoteConfirmation = ({
           <div className="mb-2">
             <p className="text-sm font-medium">Candidate</p>
             <p className="text-sm">{candidate?.name} ({candidate?.party})</p>
+            {voteCount !== null && (
+              <p className="text-xs text-green-600 mt-1">
+                Current vote count: {voteCount}
+              </p>
+            )}
           </div>
           <Separator className="my-2" />
           <div>
@@ -52,9 +81,12 @@ const VoteConfirmation = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <Button onClick={() => navigate('/results')}>
+      <CardFooter className="flex justify-center gap-3">
+        <Button onClick={() => navigate('/results')} variant="default">
           View Election Results
+        </Button>
+        <Button onClick={() => navigate('/')} variant="outline">
+          Return to Home
         </Button>
       </CardFooter>
     </Card>

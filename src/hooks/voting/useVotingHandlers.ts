@@ -108,25 +108,56 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         description: "Your vote is being recorded securely...",
       });
       
+      // Convert all IDs to strings to ensure consistency
+      const userId = String(user.id);
+      const electionId = String(selectedElection.id);
+      const candidateId = String(selectedCandidate.id);
+      
+      console.log('Casting vote with IDs:', { userId, electionId, candidateId });
+      
       // Use a Promise.all to parallelize the blockchain and database operations
       const votingContract = VotingContract.getInstance();
       const [transaction, dbResult] = await Promise.all([
         // Cast vote on blockchain
         votingContract.castVote(
-          user.id, 
+          userId, 
           selectedElection.id, 
           selectedCandidate.id
         ),
         // Also use the VoteServiceDB for database persistence and real-time updates
         voteServiceDB.castVote(
-          user.id, 
-          selectedElection.id, 
-          selectedCandidate.id
+          userId, 
+          electionId, 
+          candidateId
         )
       ]);
       
-      if (!transaction || !dbResult) {
-        throw new Error('Failed to complete the voting process. Please try again.');
+      console.log('Vote results:', { transaction, dbResult });
+      
+      if (!transaction) {
+        throw new Error('Failed to record vote on blockchain. Please try again.');
+      }
+      
+      if (!dbResult) {
+        // Check if user has already voted
+        const { data: existingVote } = await supabase
+          .from('votes')
+          .select('id, transaction_hash')
+          .eq('voter_id', userId)
+          .eq('election_id', electionId)
+          .maybeSingle();
+        
+        if (existingVote) {
+          setTransactionHash(existingVote.transaction_hash || transaction.transactionHash);
+          toast({
+            title: "Already Voted",
+            description: "You have already cast a vote in this election.",
+          });
+          setStep(7); // Move to confirmation step anyway
+          return;
+        } else {
+          throw new Error('Failed to record vote in database. Please try again.');
+        }
       }
       
       setTransactionHash(transaction.transactionHash);

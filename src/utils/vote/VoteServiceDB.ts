@@ -6,22 +6,20 @@ export class VoteServiceDB {
   /**
    * Cast a vote and update counts
    */
-  public async castVote(userId: string | number, electionId: string | number, candidateId: string | number): Promise<boolean> {
+  public async castVote(userId: string, electionId: string, candidateId: string): Promise<boolean> {
     try {
-      // Convert all IDs to strings to ensure consistency with database types
-      const voterIdStr = String(userId);
-      const electionIdStr = String(electionId);
-      const candidateIdStr = String(candidateId);
-      
       // Check if user has already voted in this election
       const { data: existingVote, error: checkError } = await supabase
         .from('votes')
         .select('id')
-        .eq('voter_id', voterIdStr)
-        .eq('election_id', electionIdStr)
+        .eq('voter_id', userId)
+        .eq('election_id', electionId)
         .maybeSingle();
 
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Error checking for existing vote:', checkError);
+        throw checkError;
+      }
       
       if (existingVote) {
         console.error('User has already voted in this election');
@@ -32,15 +30,18 @@ export class VoteServiceDB {
       const { data, error } = await supabase
         .from('votes')
         .insert({
-          voter_id: voterIdStr,
-          election_id: electionIdStr,
-          candidate_id: candidateIdStr
+          voter_id: userId,
+          election_id: electionId,
+          candidate_id: candidateId
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting vote:', error);
+        throw error;
+      }
 
       // Subscribe to real-time updates
-      this.subscribeToVoteUpdates(electionIdStr);
+      this.subscribeToVoteUpdates(electionId);
       
       return true;
     } catch (error) {
@@ -53,30 +54,64 @@ export class VoteServiceDB {
    * Subscribe to real-time updates
    */
   private subscribeToVoteUpdates(electionId: string) {
-    // Create channel name
-    const channelName = `election-${electionId}`;
-    
-    // Create channel with proper typing
-    const channel = supabase.channel(channelName);
-    
-    channel
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'votes',
-        filter: `election_id=eq.${electionId}`
-      }, () => {
-        // Trigger a refresh of the election data
-        this.getElection(electionId);
-      })
-      .subscribe();
+    try {
+      // Create channel name
+      const channelName = `election-${electionId}`;
+      
+      // Create channel with proper typing
+      const channel = supabase.channel(channelName);
+      
+      channel
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'votes',
+          filter: `election_id=eq.${electionId}`
+        }, (payload) => {
+          console.log('Vote update received:', payload);
+          // Trigger a refresh of the election data
+          this.getElection(electionId);
+        })
+        .subscribe((status) => {
+          console.log(`Subscription status for ${channelName}:`, status);
+        });
+    } catch (error) {
+      console.error('Error setting up vote subscription:', error);
+    }
   }
 
-  // Helper method to get election by ID (stub for the subscribe callback)
+  // Helper method to get election by ID (improved with logging)
   private async getElection(electionId: string) {
-    // This is just a placeholder method to satisfy the subscribeToVoteUpdates callback
-    // The actual implementation would use the ElectionServiceDB
-    console.log(`Election ${electionId} data should be refreshed`);
+    console.log(`Refreshing election data for ID: ${electionId}`);
+    try {
+      const { data, error } = await supabase
+        .from('elections')
+        .select(`
+          id,
+          title,
+          description,
+          candidates (
+            id,
+            name,
+            party
+          ),
+          votes (
+            candidate_id
+          )
+        `)
+        .eq('id', electionId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching election data:', error);
+        return;
+      }
+      
+      console.log('Election data refreshed:', data);
+      return data;
+    } catch (error) {
+      console.error('Error in getElection:', error);
+    }
   }
 }
 
