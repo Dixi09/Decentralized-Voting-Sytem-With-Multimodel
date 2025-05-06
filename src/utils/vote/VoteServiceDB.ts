@@ -37,7 +37,7 @@ export class VoteServiceDB {
 
       if (error) throw error;
 
-      // Subscribe to real-time updates
+      // Subscribe to real-time updates - Fixed type issue
       this.subscribeToVoteUpdates(electionIdStr);
       
       return true;
@@ -54,7 +54,7 @@ export class VoteServiceDB {
     // Create channel name
     const channelName = `election-${electionId}`;
     
-    // Create channel with correct typing
+    // Create channel with proper typing
     const channel = supabase.channel(channelName);
     
     channel

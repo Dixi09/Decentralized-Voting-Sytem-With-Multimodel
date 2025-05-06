@@ -81,7 +81,14 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
   };
   
   const handleCastVote = async () => {
-    if (!selectedElection || !selectedCandidate || !user) return;
+    if (!selectedElection || !selectedCandidate || !user) {
+      toast({
+        title: "Error",
+        description: "Missing required information. Please select an election and candidate.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Check if biometrics are registered
     if (!isBiometricsRegistered) {
@@ -96,7 +103,7 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
     try {
       setIsLoading(true);
       
-      // First check if user has already voted in this election
+      // First check if user has already voted in this election - with improved error handling
       const { data: existingVote, error: checkError } = await supabase
         .from('votes')
         .select('id')
@@ -104,7 +111,10 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         .eq('election_id', String(selectedElection.id))
         .maybeSingle();
       
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Error checking vote status:', checkError);
+        throw new Error('Failed to verify your voting status. Please try again.');
+      }
       
       if (existingVote) {
         toast({
@@ -116,26 +126,37 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         return;
       }
       
+      // Optimistic UI update
+      toast({
+        title: "Processing Vote",
+        description: "Your vote is being recorded securely...",
+      });
+      
+      // Use a Promise.all to parallelize the blockchain and database operations
       const votingContract = VotingContract.getInstance();
+      const [transaction, dbResult] = await Promise.all([
+        // Cast vote on blockchain
+        votingContract.castVote(
+          user.id, 
+          selectedElection.id, 
+          selectedCandidate.id
+        ),
+        // Also use the VoteServiceDB for database persistence and real-time updates
+        voteServiceDB.castVote(
+          user.id, 
+          selectedElection.id, 
+          selectedCandidate.id
+        )
+      ]);
       
-      // Cast the vote using both methods to ensure consistency
-      const transaction = await votingContract.castVote(
-        user.id, 
-        selectedElection.id, 
-        selectedCandidate.id
-      );
-      
-      // Also use the VoteServiceDB to ensure real-time updates work
-      await voteServiceDB.castVote(
-        user.id, 
-        selectedElection.id, 
-        selectedCandidate.id
-      );
+      if (!transaction || !dbResult) {
+        throw new Error('Failed to complete the voting process. Please try again.');
+      }
       
       setTransactionHash(transaction.transactionHash);
       toast({
         title: "Vote Cast Successfully",
-        description: "Your vote has been recorded on the blockchain.",
+        description: "Your vote has been securely recorded on the blockchain.",
       });
       setStep(7); // Move to confirmation step
       

@@ -75,8 +75,8 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     if (!isCameraReady || isCaptured || isScanning) return;
     
     let lastDetectionTime = 0;
-    // Reduced detection interval from 300ms to 150ms for faster detection
-    const DETECTION_INTERVAL = 150; 
+    // Reduced detection interval from 300ms to 100ms for faster detection
+    const DETECTION_INTERVAL = 100; 
     
     const detectPalm = (timestamp: number) => {
       if (timestamp - lastDetectionTime > DETECTION_INTERVAL) {
@@ -106,7 +106,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
               setIsConfidenceLow(isPalmPresent.confidence < 0.7);
               setIsPalmProperlyPositioned(isPalmPresent.confidence > 0.8);
               
-              // Optimized feature detection - less computationally intensive
+              // Optimized feature detection
               const detectedFeatures = analyzeFrame(imageData, isPalmPresent.confidence);
               setPalmFeatures(detectedFeatures);
               
@@ -291,7 +291,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     
     // First ensure that we actually have a palm detected with sufficient confidence
     // Slightly reduced required confidence for faster detection
-    if (!isPalmDetected || detectionConfidence < 0.72) { // Reduced from 0.75
+    if (!isPalmDetected || detectionConfidence < 0.65) { // Reduced from 0.72
       toast({
         title: "No Palm Detected",
         description: "Please position your palm clearly in the center of the frame.",
@@ -317,7 +317,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
       description: "Scanning palm features...",
     });
     
-    // Optimized scan timing - greatly reduced delays
+    // Further optimized scan timing - reduced delays
     setTimeout(() => {
       // Draw the current video frame on the canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -327,7 +327,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         description: `Analyzing palm lines and features...`,
       });
       
-      // Reduced delay from 1500ms to 700ms
+      // Reduced delay from 700ms to 500ms
       setTimeout(() => {
         setIsCaptured(true);
         setIsScanning(false);
@@ -339,7 +339,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
           description: "Please move your palm slightly to verify it's a real palm.",
         });
         
-        // Reduced liveness check from 2000ms to 800ms
+        // Reduced liveness check from 800ms to 500ms
         setTimeout(() => {
           setIsLivenessChecking(false);
           toast({
@@ -347,9 +347,9 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
             description: "Now verifying your palm scan...",
           });
           verifyPalm();
-        }, 800); // Reduced from 2000ms
-      }, 700); // Reduced from 1500ms
-    }, 800); // Reduced from 2000ms
+        }, 500); // Reduced from 800ms
+      }, 500); // Reduced from 700ms
+    }, 600); // Reduced from 800ms
   };
   
   const verifyPalm = async () => {
@@ -357,7 +357,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
     
     try {
       // Faster verification process - reduced delay significantly
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2500ms
+      await new Promise(resolve => setTimeout(resolve, 600)); // Reduced from 1000ms
       
       // Success criteria now depends on:
       // 1. Palm must be detected
@@ -365,12 +365,12 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
       // 3. Must have detected enough palm features
       // 4. Previous attempt history is considered
       
-      const minRequiredFeatures = 3; // Require at least 3 palm features
+      const minRequiredFeatures = 2; // Reduced from 3 features to 2
       const detectedFeatureCount = palmFeatures.length;
       const featuresSufficient = detectedFeatureCount >= minRequiredFeatures;
       
       // More lenient verification with each attempt for faster process
-      const successThreshold = 0.8 - (Math.min(attemptCount, 2) * 0.05); // Reduced from 0.85
+      const successThreshold = 0.7 - (Math.min(attemptCount, 2) * 0.05); // Reduced from 0.8
       
       // Calculate overall verification score
       const verificationScore = detectionConfidence * (featuresSufficient ? 1.0 : 0.7);
@@ -386,7 +386,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         // Call the onVerified callback after a shorter delay
         setTimeout(() => {
           if (onVerified) onVerified();
-        }, 800); // Reduced from 1500ms
+        }, 500); // Reduced from 800ms
       } else {
         setVerificationStatus('error');
         setAttemptCount(prevCount => prevCount + 1);
@@ -415,7 +415,7 @@ const PalmRecognition = ({ onVerified, onError, className }: PalmRecognitionProp
         // Reset to try again after a shorter delay
         setTimeout(() => {
           retryCapture();
-        }, 1000); // Reduced from 2000ms
+        }, 800); // Reduced from 1000ms
       }
     } catch (error) {
       setVerificationStatus('error');
