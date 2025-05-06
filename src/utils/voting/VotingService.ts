@@ -92,7 +92,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
-            storeVotingHistory(String(candidate.id), String(electionId), votingHistoryData)
+            storeVotingHistory(Number(candidate.id), Number(electionId), votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
           } catch (error) {
