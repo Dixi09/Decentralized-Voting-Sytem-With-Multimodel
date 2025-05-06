@@ -1,4 +1,3 @@
-
 import VotingContract from '@/utils/VotingContract';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -102,29 +101,6 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
     
     try {
       setIsLoading(true);
-      
-      // First check if user has already voted in this election - with improved error handling
-      const { data: existingVote, error: checkError } = await supabase
-        .from('votes')
-        .select('id')
-        .eq('voter_id', user.id)
-        .eq('election_id', String(selectedElection.id))
-        .maybeSingle();
-      
-      if (checkError) {
-        console.error('Error checking vote status:', checkError);
-        throw new Error('Failed to verify your voting status. Please try again.');
-      }
-      
-      if (existingVote) {
-        toast({
-          title: "Already Voted",
-          description: "You have already cast your vote in this election.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
       
       // Optimistic UI update
       toast({

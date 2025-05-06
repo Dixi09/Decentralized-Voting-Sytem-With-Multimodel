@@ -29,15 +29,17 @@ export class VoteServiceDB {
       }
 
       // If no existing vote, proceed with casting the vote
-      const { data, error } = await supabase.rpc('cast_vote', {
-        p_voter_id: voterIdStr,
-        p_election_id: electionIdStr,
-        p_candidate_id: candidateIdStr
-      });
+      const { data, error } = await supabase
+        .from('votes')
+        .insert({
+          voter_id: voterIdStr,
+          election_id: electionIdStr,
+          candidate_id: candidateIdStr
+        });
 
       if (error) throw error;
 
-      // Subscribe to real-time updates - Fixed type issue
+      // Subscribe to real-time updates
       this.subscribeToVoteUpdates(electionIdStr);
       
       return true;

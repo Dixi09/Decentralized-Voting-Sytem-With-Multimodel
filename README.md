@@ -8,11 +8,12 @@ A complete decentralized voting system that combines blockchain technology with 
 SecureVote Chain is a project that implements a secure, transparent, and tamper-proof voting system using blockchain technology and multimodel biometric verification. The system provides:
 
 - Facial recognition for voter authentication
-- Palm recognition for additional identity verification
+- Palm recognition for additional identity verification (now with faster processing)
 - Two-factor authentication with OTP
 - Blockchain-based vote storage and verification
 - Real-time result tracking and analytics
 - Tamper-proof voting records
+- Parallel processing of votes for enhanced performance
 
 ## Technology Stack
 
@@ -37,7 +38,7 @@ SecureVote Chain is a project that implements a secure, transparent, and tamper-
 
 1. **Multi-factor Biometric Authentication**
    - Facial recognition verification (liveness detection)
-   - Palm recognition verification
+   - Optimized palm recognition verification (faster processing)
    - One-time password (OTP) verification
 
 2. **Secure User Registration**
@@ -48,7 +49,7 @@ SecureVote Chain is a project that implements a secure, transparent, and tamper-
 3. **Secure Voting Process**
    - Election selection with filtering options
    - Candidate voting with detailed information
-   - Blockchain transaction recording and verification
+   - Parallel blockchain and database transaction recording
    - Vote confirmation and receipt generation
 
 4. **Transparent Results**
@@ -114,6 +115,12 @@ src/
    - Complete audit trail of all voting activities
    - Real-time monitoring of system health
    - Automated alerts for suspicious activities
+
+## Performance Features
+   - Parallel processing for blockchain and database operations
+   - Optimized palm verification for faster authentication
+   - Real-time vote counting updates
+   - Efficient database queries and caching
 
 ## Running the Project
 
