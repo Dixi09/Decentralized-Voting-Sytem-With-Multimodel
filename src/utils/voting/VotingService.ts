@@ -10,12 +10,16 @@ class VotingService {
   /**
    * Cast a vote in a specific election
    */
-  public async castVote(userId: string, electionId: number, candidateId: number): Promise<VoteTransaction> {
+  public async castVote(userId: string, electionId: number | string, candidateId: number | string): Promise<VoteTransaction> {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
+          // Convert string IDs to numbers if necessary
+          const numElectionId = typeof electionId === 'string' ? parseInt(electionId) : electionId;
+          const numCandidateId = typeof candidateId === 'string' ? parseInt(candidateId) : candidateId;
+          
           // Find the election and candidate
-          const election = await this.getElection(electionId);
+          const election = await this.getElection(numElectionId);
           if (!election) {
             reject(new Error("Election not found"));
             return;
@@ -26,7 +30,7 @@ class VotingService {
             return;
           }
           
-          const candidate = election.candidates.find(c => c.id === candidateId);
+          const candidate = election.candidates.find(c => c.id === numCandidateId);
           if (!candidate) {
             reject(new Error("Candidate not found"));
             return;
@@ -37,14 +41,14 @@ class VotingService {
             this.hasVoted[userId] = new Set();
           }
           
-          if (this.hasVoted[userId].has(electionId)) {
+          if (this.hasVoted[userId].has(numElectionId)) {
             reject(new Error("You have already cast your vote in this election"));
             return;
           }
           
           // Record the vote
           candidate.voteCount++;
-          this.hasVoted[userId].add(electionId);
+          this.hasVoted[userId].add(numElectionId);
           
           // Create transaction record
           const transactionHash = `tx-${Math.random().toString(16).substring(2, 42)}`;
@@ -53,8 +57,8 @@ class VotingService {
             blockNumber: Math.floor(Math.random() * 1000000),
             timestamp: new Date(),
             voter: userId,
-            electionId,
-            candidateId
+            electionId: numElectionId,
+            candidateId: numCandidateId
           };
           
           this.transactions.push(transaction);
@@ -64,15 +68,15 @@ class VotingService {
             // Store vote in database - always convert IDs to strings for consistency with UUID format
             await supabase.from('votes').insert({
               voter_id: userId,
-              election_id: String(electionId),
-              candidate_id: String(candidateId),
+              election_id: String(numElectionId),
+              candidate_id: String(numCandidateId),
               transaction_hash: transaction.transactionHash
             });
 
             // Store voting history in Supabase storage
             const votingHistoryData = {
               election: {
-                id: electionId,
+                id: numElectionId,
                 title: election.title
               },
               candidate: {
@@ -92,8 +96,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
-            // Fix: Convert candidateId and electionId to numbers before passing to storeVotingHistory
-            storeVotingHistory(Number(candidate.id), Number(electionId), votingHistoryData)
+            storeVotingHistory(Number(candidate.id), numElectionId, votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
           } catch (error) {

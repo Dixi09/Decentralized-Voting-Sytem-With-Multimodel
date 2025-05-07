@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { BarChart2, PieChart as PieChartIcon, Activity, AlertCircle } from 'lucide-react';
+import { BarChart2, PieChart as PieChartIcon, Activity, AlertCircle, Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import VotingContract, { Election } from '@/utils/VotingContract';
+import { supabase } from '@/integrations/supabase/client';
 
 const COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#D946EF', '#14B8A6', '#F97316', '#F43F5E'];
 
@@ -36,7 +36,7 @@ const Results = () => {
         
         if (electionList.length > 0) {
           setSelectedElection(electionList[0]);
-          processResults(electionList[0]);
+          fetchResultsForElection(electionList[0]);
         }
       } catch (error) {
         console.error('Error fetching elections:', error);
@@ -53,6 +53,84 @@ const Results = () => {
     
     fetchElections();
   }, []);
+  
+  // New function to fetch real vote data from the database
+  const fetchResultsForElection = async (election: Election) => {
+    if (!election || !election.candidates) {
+      setResults([]);
+      return;
+    }
+    
+    try {
+      // Get votes from database for this election
+      const strElectionId = String(election.id);
+      console.log('Fetching votes for election ID:', strElectionId);
+      
+      const { data: votes, error } = await supabase
+        .from('votes')
+        .select('candidate_id')
+        .eq('election_id', strElectionId);
+        
+      if (error) {
+        console.error('Error fetching votes:', error);
+        // Fall back to mock data
+        processResults(election);
+        return;
+      }
+      
+      console.log('Fetched votes:', votes);
+      
+      // Count votes per candidate
+      const voteCounts: Record<string, number> = {};
+      votes?.forEach(vote => {
+        const candidateId = vote.candidate_id;
+        if (candidateId) {
+          voteCounts[candidateId] = (voteCounts[candidateId] || 0) + 1;
+        }
+      });
+      
+      // If we have real votes, update the candidates with real vote counts
+      const updatedCandidates = election.candidates.map(candidate => ({
+        ...candidate,
+        voteCount: voteCounts[String(candidate.id)] || candidate.voteCount || 0
+      }));
+      
+      // Create a new election object with updated candidates
+      const updatedElection = {
+        ...election,
+        candidates: updatedCandidates
+      };
+      
+      setSelectedElection(updatedElection);
+      processResults(updatedElection);
+      
+      // Set up real-time listener for vote updates
+      const channel = supabase.channel(`election-votes-${strElectionId}`)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'votes',
+            filter: `election_id=eq.${strElectionId}`
+          }, 
+          (payload) => {
+            console.log('Vote change detected:', payload);
+            // Refresh the results when votes change
+            fetchResultsForElection(updatedElection);
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+      
+    } catch (err) {
+      console.error('Error processing votes:', err);
+      // Fall back to mock data
+      processResults(election);
+    }
+  };
   
   const processResults = (election: Election) => {
     if (!election || !election.candidates) return;
@@ -73,10 +151,10 @@ const Results = () => {
   };
   
   const handleElectionChange = (value: string) => {
-    const election = elections.find(e => e.id.toString() === value);
+    const election = elections.find(e => String(e.id) === value);
     if (election) {
       setSelectedElection(election);
-      processResults(election);
+      fetchResultsForElection(election);
     }
   };
   
@@ -84,6 +162,7 @@ const Results = () => {
     return `${value.toFixed(1)}%`;
   };
   
+  // ... keep existing code (the renderBlockchainInfo function)
   const renderBlockchainInfo = () => {
     return (
       <div className="mt-6">
@@ -124,12 +203,10 @@ const Results = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-            <div className="h-64 bg-slate-200 rounded"></div>
-            <div className="h-32 bg-slate-200 rounded"></div>
-          </div>
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <Loader2 className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-spin" />
+          <h2 className="text-2xl font-bold mb-2">Loading Results</h2>
+          <p className="text-muted-foreground">Fetching election data...</p>
         </div>
       </Layout>
     );

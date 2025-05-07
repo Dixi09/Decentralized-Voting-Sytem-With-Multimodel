@@ -21,22 +21,27 @@ const VoteConfirmation = ({
 }: VoteConfirmationProps) => {
   const navigate = useNavigate();
   const [voteCount, setVoteCount] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     const fetchVoteCount = async () => {
       if (!candidate) return;
       
       try {
+        setIsLoading(true);
         const candidateId = String(candidate.id);
         console.log('Fetching vote count for candidate:', candidateId);
         
+        // First try to get votes from the database
         const { data, error } = await supabase
           .from('votes')
           .select('id')
           .eq('candidate_id', candidateId);
           
         if (error) {
-          console.error('Error fetching vote count:', error);
+          console.error('Error fetching vote count from database:', error);
+          // Fall back to the candidate's vote count from props
+          setVoteCount(candidate.voteCount || 0);
           return;
         }
         
@@ -44,10 +49,37 @@ const VoteConfirmation = ({
         setVoteCount(data?.length || 0);
       } catch (err) {
         console.error('Error fetching vote count:', err);
+        // Fall back to the candidate's vote count from props
+        setVoteCount(candidate.voteCount || 0);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchVoteCount();
+    
+    // Set up real-time listener for vote updates
+    if (candidate) {
+      const candidateId = String(candidate.id);
+      const channel = supabase.channel(`votes-${candidateId}`)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'votes',
+            filter: `candidate_id=eq.${candidateId}`
+          }, 
+          (payload) => {
+            console.log('Vote change detected:', payload);
+            fetchVoteCount();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [candidate]);
   
   return (
@@ -72,11 +104,13 @@ const VoteConfirmation = ({
           <div className="mb-2">
             <p className="text-sm font-medium">Candidate</p>
             <p className="text-sm">{candidate?.name || 'N/A'} ({candidate?.party || 'N/A'})</p>
-            {voteCount !== null && (
+            {isLoading ? (
+              <p className="text-xs text-blue-600 mt-1">Loading vote count...</p>
+            ) : voteCount !== null ? (
               <p className="text-xs text-green-600 mt-1">
                 Current vote count: {voteCount}
               </p>
-            )}
+            ) : null}
           </div>
           <Separator className="my-2" />
           <div>
