@@ -5,7 +5,7 @@
 import { storeVotingHistory, getVotingHistory, listCandidateVotingHistory, listAllVotingHistory } from "./storage/supabaseStorageService";
 import { getUserVotingHistory, getAllVotes } from "./vote/voteService";
 import { ElectionServiceDB, electionServiceDB } from "./election/ElectionServiceDB";
-import { VoteServiceDB, voteServiceDB } from "./vote/VoteServiceDB";
+import { voteServiceDB } from "./vote/VoteServiceDB";
 
 // Re-export all the functions and classes
 export {

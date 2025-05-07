@@ -1,4 +1,3 @@
-
 import VotingContract from '@/utils/VotingContract';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -132,7 +131,6 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         toast({
           title: "Already Voted",
           description: "You have already cast a vote in this election.",
-          variant: "warning",
         });
         return;
       }

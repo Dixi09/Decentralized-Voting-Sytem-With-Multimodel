@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -66,7 +65,6 @@ export function useFaceVerification({ onVerified, onError, isRegistrationMode = 
           toast({
             title: "No Biometrics Found",
             description: "Please register your facial biometrics to continue.",
-            variant: "warning",
           });
         }
       } catch (err) {
