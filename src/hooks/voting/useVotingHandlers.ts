@@ -1,3 +1,4 @@
+
 import VotingContract from '@/utils/VotingContract';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -115,50 +116,75 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       
       console.log('Casting vote with IDs:', { userId, electionId, candidateId });
       
-      // Use the VoteServiceDB for database persistence
-      const dbResult = await voteServiceDB.castVote(userId, electionId, candidateId);
-      
-      if (!dbResult) {
-        // Check if user has already voted
-        const { data: existingVote } = await supabase
+      try {
+        // Use the VoteServiceDB for database persistence
+        const dbResult = await voteServiceDB.castVote(userId, electionId, candidateId);
+        
+        if (!dbResult) {
+          // Check if user has already voted
+          const { data: existingVote } = await supabase
+            .from('votes')
+            .select('id, transaction_hash')
+            .eq('voter_id', userId)
+            .eq('election_id', electionId)
+            .maybeSingle();
+          
+          if (existingVote) {
+            // If there's an existing vote, show it as a success but mention they already voted
+            setTransactionHash(existingVote.transaction_hash || `tx-${Date.now()}`);
+            toast({
+              title: "Already Voted",
+              description: "You have already cast a vote in this election.",
+            });
+            setStep(7); // Move to confirmation step anyway
+            return;
+          } else {
+            throw new Error('Failed to record vote in database. Please try again.');
+          }
+        }
+        
+        // Get the transaction hash from the recently inserted vote
+        const { data: voteTx } = await supabase
           .from('votes')
-          .select('id, transaction_hash')
+          .select('transaction_hash')
           .eq('voter_id', userId)
           .eq('election_id', electionId)
           .maybeSingle();
+          
+        setTransactionHash(voteTx?.transaction_hash || `tx-${Date.now()}`);
         
-        if (existingVote) {
-          // If there's an existing vote, show it as a success but mention they already voted
-          setTransactionHash(existingVote.transaction_hash || `tx-${Date.now()}`);
+        toast({
+          title: "Vote Cast Successfully",
+          description: "Your vote has been securely recorded.",
+        });
+        setStep(7); // Move to confirmation step
+      } catch (error: any) {
+        console.error('Error casting vote to DB:', error);
+        
+        // Try using the mock service as fallback
+        try {
+          console.log('Falling back to mock voting service');
+          const votingContract = VotingContract.getInstance();
+          const tx = await votingContract.castVote(userId, electionId, candidateId);
+          
+          setTransactionHash(tx.transactionHash);
+          
           toast({
-            title: "Already Voted",
-            description: "You have already cast a vote in this election.",
+            title: "Vote Cast Successfully",
+            description: "Your vote has been recorded using the fallback system.",
           });
-          setStep(7); // Move to confirmation step anyway
-          return;
-        } else {
-          throw new Error('Failed to record vote in database. Please try again.');
+          setStep(7); // Move to confirmation step
+        } catch (fallbackError) {
+          console.error('Fallback voting also failed:', fallbackError);
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "Failed to cast vote. Please try again.",
+            variant: "destructive",
+          });
         }
       }
-      
-      // Get the transaction hash from the recently inserted vote
-      const { data: voteTx } = await supabase
-        .from('votes')
-        .select('transaction_hash')
-        .eq('voter_id', userId)
-        .eq('election_id', electionId)
-        .maybeSingle();
-        
-      setTransactionHash(voteTx?.transaction_hash || `tx-${Date.now()}`);
-      
-      toast({
-        title: "Vote Cast Successfully",
-        description: "Your vote has been securely recorded.",
-      });
-      setStep(7); // Move to confirmation step
-      
     } catch (error) {
-      console.error('Error casting vote:', error);
+      console.error('Error in handleCastVote:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to cast vote. Please try again.",

@@ -32,47 +32,11 @@ export class VoteServiceDB {
         return false;
       }
 
-      // Verify that the candidate exists in this election
-      const { data: candidate, error: candidateError } = await supabase
-        .from('candidates')
-        .select('id, name, party')
-        .eq('id', strCandidateId)
-        .eq('election_id', strElectionId)
-        .maybeSingle();
-        
-      if (candidateError) {
-        console.error('Error verifying candidate:', candidateError);
-        throw new Error(candidateError.message);
-      }
-      
-      if (!candidate) {
-        console.error('Candidate not found in this election');
-        
-        // As a fallback, try to find candidate in mock data
-        console.log('Attempting to use mock data as fallback...');
-        const transactionHash = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        
-        // Create the vote record
-        const { error } = await supabase
-          .from('votes')
-          .insert({
-            voter_id: userId,
-            election_id: strElectionId,
-            candidate_id: strCandidateId,
-            transaction_hash: transactionHash
-          });
-
-        if (error) {
-          console.error('Error inserting vote with mock data:', error);
-          return false;
-        }
-        
-        console.log('Vote successfully cast using mock data fallback');
-        return true;
-      }
-
-      // If no existing vote and candidate is valid, proceed with casting the vote
+      // Create a transaction hash
       const transactionHash = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+
+      // Insert the vote directly without checking candidate existence
+      // (the database constraints will handle this)
       const { data, error } = await supabase
         .from('votes')
         .insert({
@@ -84,6 +48,37 @@ export class VoteServiceDB {
 
       if (error) {
         console.error('Error inserting vote:', error);
+        
+        // If there was a foreign key error, it might be because the candidate or election doesn't exist
+        // Let's try to provide more helpful diagnostics
+        if (error.code === '23503') { // Foreign key violation
+          console.log('Checking if candidate exists...');
+          const { data: candidateExists } = await supabase
+            .from('candidates')
+            .select('id')
+            .eq('id', strCandidateId)
+            .maybeSingle();
+            
+          console.log('Candidate check result:', candidateExists);
+          
+          console.log('Checking if election exists...');
+          const { data: electionExists } = await supabase
+            .from('elections')
+            .select('id')
+            .eq('id', strElectionId)
+            .maybeSingle();
+            
+          console.log('Election check result:', electionExists);
+          
+          if (!candidateExists) {
+            console.error('Candidate does not exist in the database:', strCandidateId);
+          }
+          
+          if (!electionExists) {
+            console.error('Election does not exist in the database:', strElectionId);
+          }
+        }
+        
         throw error;
       }
 
@@ -91,10 +86,24 @@ export class VoteServiceDB {
       
       // Try to store voting history too
       try {
+        // Fetch candidate details for the history
+        const { data: candidate } = await supabase
+          .from('candidates')
+          .select('name, party')
+          .eq('id', strCandidateId)
+          .maybeSingle();
+          
+        // Fetch election details for the history
+        const { data: election } = await supabase
+          .from('elections')
+          .select('title')
+          .eq('id', strElectionId)
+          .maybeSingle();
+          
         const votingHistoryData = {
           election: {
             id: electionId,
-            title: "Election" // We don't have the title here, but could fetch it
+            title: election?.title || "Election"
           },
           candidate: {
             id: candidateId,
@@ -127,7 +136,7 @@ export class VoteServiceDB {
       return true;
     } catch (error) {
       console.error('Error casting vote:', error);
-      return false;
+      throw error; // Propagate the error for better error handling in UI
     }
   }
 

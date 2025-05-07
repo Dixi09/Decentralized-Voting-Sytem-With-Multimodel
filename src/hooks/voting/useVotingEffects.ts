@@ -37,7 +37,9 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         if (error) throw error;
 
         // User has registered biometrics if face_image_url exists
-        setIsBiometricsRegistered(!!data?.face_image_url);
+        const registered = !!data?.face_image_url;
+        console.log('Biometrics registered:', registered);
+        setIsBiometricsRegistered(registered);
       } catch (error) {
         console.error('Error checking biometrics:', error);
         toast({
@@ -58,10 +60,57 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
     const fetchElections = async () => {
       try {
         setIsLoading(true);
+        
+        // First try to fetch from Supabase
+        try {
+          const { data: dbElections, error } = await supabase
+            .from('elections')
+            .select(`
+              id,
+              title,
+              description,
+              start_date,
+              end_date,
+              is_active,
+              candidates (
+                id,
+                name,
+                party
+              )
+            `);
+            
+          if (!error && dbElections && dbElections.length > 0) {
+            console.log('Fetched elections from database:', dbElections);
+            
+            // Transform to match Election interface
+            const formattedElections = dbElections.map(election => ({
+              id: election.id,
+              title: election.title,
+              description: election.description || '',
+              startDate: new Date(election.start_date),
+              endDate: new Date(election.end_date),
+              isActive: election.is_active || false,
+              candidates: election.candidates.map(candidate => ({
+                id: candidate.id,
+                name: candidate.name,
+                party: candidate.party || '',
+                voteCount: 0 // Will be updated with real data later
+              }))
+            }));
+            
+            setElections(formattedElections);
+            return;
+          }
+        } catch (dbError) {
+          console.error('Error fetching elections from database:', dbError);
+        }
+        
+        // Fall back to mock data
+        console.log('Falling back to mock election data');
         const votingContract = VotingContract.getInstance();
         const electionList = await votingContract.getElections();
         
-        console.log('Fetched elections:', electionList);
+        console.log('Fetched elections from mock data:', electionList);
         setElections(electionList);
       } catch (error) {
         console.error('Error fetching elections:', error);

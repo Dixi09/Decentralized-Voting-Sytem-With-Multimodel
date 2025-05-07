@@ -46,7 +46,9 @@ const VoteConfirmation = ({
         }
         
         console.log('Vote count data:', data);
-        setVoteCount(data?.length || 0);
+        const count = data?.length || 0;
+        console.log('Calculated vote count:', count);
+        setVoteCount(count);
       } catch (err) {
         console.error('Error fetching vote count:', err);
         // Fall back to the candidate's vote count from props
@@ -61,6 +63,8 @@ const VoteConfirmation = ({
     // Set up real-time listener for vote updates
     if (candidate) {
       const candidateId = String(candidate.id);
+      console.log('Setting up real-time listener for candidate:', candidateId);
+      
       const channel = supabase.channel(`votes-${candidateId}`)
         .on('postgres_changes', 
           { 
@@ -77,6 +81,7 @@ const VoteConfirmation = ({
         .subscribe();
         
       return () => {
+        console.log('Cleaning up channel subscription');
         supabase.removeChannel(channel);
       };
     }
