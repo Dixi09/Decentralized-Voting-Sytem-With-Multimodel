@@ -37,7 +37,8 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
     processLivenessGesture
   } = useFaceVerification({ 
     onVerified,
-    isRegistrationMode 
+    onError,
+    isRegistrationMode: registrationModeState
   });
 
   // Initialize camera
@@ -58,6 +59,10 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
             setIsCameraReady(true);
+            toast({
+              title: "Camera Ready",
+              description: "Your camera is now ready for facial verification.",
+            });
           };
         }
       } catch (err) {
@@ -86,6 +91,11 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
     setTimeout(() => {
       setFaceLandmarks(['eyes', 'nose', 'mouth', 'jawline']);
       setIsScanning(false);
+      
+      toast({
+        title: "Face Detected",
+        description: "Your face is now properly positioned. You can proceed with verification.",
+      });
     }, 1500);
   };
 
@@ -105,6 +115,11 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
 
     if (!hasReferenceImage) {
       setError('You need to register your face first before attempting to vote.');
+      toast({
+        title: "Face Not Registered",
+        description: "Please register your face first using the Register Face button.",
+        variant: "warning",
+      });
       return;
     }
     
@@ -309,6 +324,7 @@ function formatGestureInstruction(gesture: string | null): string {
     case 'turn_left': return "turn your head slightly to the left";
     case 'turn_right': return "turn your head slightly to the right";
     case 'nod': return "nod your head up and down";
+    case 'raise_eyebrows': return "raise your eyebrows";
     default: return "follow the instructions";
   }
 }

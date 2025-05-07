@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -5,10 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UseFaceVerificationProps {
   onVerified?: () => void;
+  onError?: () => void;
   isRegistrationMode?: boolean;
 }
 
-export function useFaceVerification({ onVerified, isRegistrationMode = false }: UseFaceVerificationProps) {
+export function useFaceVerification({ onVerified, onError, isRegistrationMode = false }: UseFaceVerificationProps) {
   const [isCaptured, setIsCaptured] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -54,9 +56,18 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         if (data?.face_image_url) {
           setReferenceImage(data.face_image_url);
           setHasReferenceImage(true);
+          toast({
+            title: "Biometrics Found",
+            description: "Your facial biometric data was successfully retrieved.",
+          });
         } else {
           console.log("No face image found for user");
           setHasReferenceImage(false);
+          toast({
+            title: "No Biometrics Found",
+            description: "Please register your facial biometrics to continue.",
+            variant: "warning",
+          });
         }
       } catch (err) {
         console.error('Error in fetchUserFace:', err);
@@ -177,7 +188,7 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
       
       toast({
         title: "Face Registered",
-        description: "Your face has been successfully registered.",
+        description: "Your face has been successfully registered for secure voting.",
       });
       
       // Set the reference image to the newly captured image
@@ -196,6 +207,10 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         description: "Failed to save your face image. Please try again.",
         variant: "destructive",
       });
+      
+      if (onError) {
+        onError();
+      }
     } finally {
       setIsRegistering(false);
     }
@@ -209,6 +224,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         description: "Camera elements not available. Please refresh the page.",
         variant: "destructive",
       });
+      
+      if (onError) onError();
       return;
     }
     
@@ -220,6 +237,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         description: `Too many failed verification attempts. Please try again in ${remainingTime} minutes.`,
         variant: "destructive",
       });
+      
+      if (onError) onError();
       return;
     }
     
@@ -233,6 +252,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         description: "Could not initialize camera context. Please try again.",
         variant: "destructive",
       });
+      
+      if (onError) onError();
       return;
     }
     
@@ -256,6 +277,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         setIsCaptured(false);
         setVerificationStatus('idle');
       }, 2000);
+      
+      if (onError) onError();
       return;
     }
     
@@ -313,6 +336,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
             description: "Too many failed verification attempts. For security reasons, biometric verification has been locked for 15 minutes.",
             variant: "destructive",
           });
+          
+          if (onError) onError();
         }
         
         resetVerification();
@@ -360,6 +385,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         setIsVerifying(false);
         setVerificationStatus('idle');
       }, 2000);
+      
+      if (onError) onError();
       return;
     }
 
@@ -373,7 +400,7 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         setVerificationStatus('success');
         toast({
           title: "Face Verified",
-          description: "Your identity has been successfully verified.",
+          description: `Your identity has been successfully verified with ${Math.round(result.confidence * 100)}% confidence.`,
         });
         
         // Reset the consecutive failures counter on success
@@ -416,6 +443,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
           setIsVerifying(false);
           setVerificationStatus('idle');
         }, 2000);
+        
+        if (onError) onError();
       }
     } catch (error) {
       console.error('Face verification error:', error);
@@ -432,6 +461,8 @@ export function useFaceVerification({ onVerified, isRegistrationMode = false }: 
         setIsVerifying(false);
         setVerificationStatus('idle');
       }, 2000);
+      
+      if (onError) onError();
     }
   };
 

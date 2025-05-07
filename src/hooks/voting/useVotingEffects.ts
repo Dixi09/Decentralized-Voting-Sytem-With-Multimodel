@@ -40,6 +40,19 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         const registered = !!data?.face_image_url;
         console.log('Biometrics registered:', registered);
         setIsBiometricsRegistered(registered);
+        
+        if (registered) {
+          toast({
+            title: "Biometric Data Found",
+            description: "Your biometric verification data is available for secure voting.",
+          });
+        } else {
+          toast({
+            title: "Biometric Registration Required",
+            description: "Please register your biometric data to enable secure voting.",
+            variant: "warning",
+          });
+        }
       } catch (error) {
         console.error('Error checking biometrics:', error);
         toast({
@@ -98,6 +111,11 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
               }))
             }));
             
+            // For each election, fetch vote counts for each candidate
+            for (const election of formattedElections) {
+              await fetchVoteCountsForElection(election);
+            }
+            
             setElections(formattedElections);
             return;
           }
@@ -121,6 +139,42 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         });
       } finally {
         setIsLoading(false);
+      }
+    };
+    
+    const fetchVoteCountsForElection = async (election) => {
+      try {
+        const electionId = String(election.id);
+        
+        // Get vote counts for each candidate
+        const { data: votes, error } = await supabase
+          .from('votes')
+          .select('candidate_id')
+          .eq('election_id', electionId);
+          
+        if (error) {
+          console.error('Error fetching votes for election:', electionId, error);
+          return;
+        }
+        
+        // Count votes by candidate
+        const voteCounts = {};
+        votes?.forEach(vote => {
+          const candidateId = vote.candidate_id;
+          if (candidateId) {
+            voteCounts[candidateId] = (voteCounts[candidateId] || 0) + 1;
+          }
+        });
+        
+        // Update candidate vote counts
+        election.candidates = election.candidates.map(candidate => ({
+          ...candidate,
+          voteCount: voteCounts[String(candidate.id)] || 0
+        }));
+        
+        console.log('Updated election with vote counts:', election);
+      } catch (err) {
+        console.error('Error fetching vote counts for election:', err);
       }
     };
     
@@ -202,9 +256,21 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
           ...selectedElection,
           candidates: updatedCandidates
         });
+        
+        console.log('Updated election candidates with vote counts:', updatedCandidates);
+        
+        toast({
+          title: "Vote Counts Updated",
+          description: "The election results have been refreshed with the latest votes.",
+        });
       }
     } catch (err) {
       console.error('Error refreshing vote counts:', err);
+      toast({
+        title: "Error",
+        description: "Failed to refresh vote counts. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 };

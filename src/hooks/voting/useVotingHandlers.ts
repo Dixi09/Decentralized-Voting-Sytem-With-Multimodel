@@ -103,98 +103,92 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
     try {
       setIsLoading(true);
       
-      // Optimistic UI update
-      toast({
-        title: "Processing Vote",
-        description: "Your vote is being recorded securely...",
+      // Log data being sent
+      console.log('Casting vote with data:', {
+        electionId: selectedElection.id,
+        candidateId: selectedCandidate.id,
+        userId: user.id
       });
       
-      // Convert all IDs to strings to ensure consistency
-      const userId = String(user.id);
-      const electionId = String(selectedElection.id);
-      const candidateId = String(selectedCandidate.id);
-      
-      console.log('Casting vote with IDs:', { userId, electionId, candidateId });
-      
-      try {
-        // Use the VoteServiceDB for database persistence
-        const dbResult = await voteServiceDB.castVote(userId, electionId, candidateId);
+      // First, check if the user has already voted in this election
+      const { data: existingVotes, error: checkError } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('election_id', String(selectedElection.id))
+        .eq('voter_id', String(user.id))
+        .limit(1);
         
-        if (!dbResult) {
-          // Check if user has already voted
-          const { data: existingVote } = await supabase
-            .from('votes')
-            .select('id, transaction_hash')
-            .eq('voter_id', userId)
-            .eq('election_id', electionId)
-            .maybeSingle();
-          
-          if (existingVote) {
-            // If there's an existing vote, show it as a success but mention they already voted
-            setTransactionHash(existingVote.transaction_hash || `tx-${Date.now()}`);
-            toast({
-              title: "Already Voted",
-              description: "You have already cast a vote in this election.",
-            });
-            setStep(7); // Move to confirmation step anyway
-            return;
-          } else {
-            throw new Error('Failed to record vote in database. Please try again.');
-          }
-        }
-        
-        // Get the transaction hash from the recently inserted vote
-        const { data: voteTx } = await supabase
-          .from('votes')
-          .select('transaction_hash')
-          .eq('voter_id', userId)
-          .eq('election_id', electionId)
-          .maybeSingle();
-          
-        setTransactionHash(voteTx?.transaction_hash || `tx-${Date.now()}`);
-        
+      if (checkError) {
+        console.error('Error checking existing votes:', checkError);
         toast({
-          title: "Vote Cast Successfully",
-          description: "Your vote has been securely recorded.",
+          title: "Error",
+          description: "Could not verify your voting status. Please try again.",
+          variant: "destructive",
         });
-        setStep(7); // Move to confirmation step
-      } catch (error: any) {
-        console.error('Error casting vote to DB:', error);
-        
-        // Try using the mock service as fallback
-        try {
-          console.log('Falling back to mock voting service');
-          const votingContract = VotingContract.getInstance();
-          const tx = await votingContract.castVote(userId, electionId, candidateId);
-          
-          setTransactionHash(tx.transactionHash);
-          
-          toast({
-            title: "Vote Cast Successfully",
-            description: "Your vote has been recorded using the fallback system.",
-          });
-          setStep(7); // Move to confirmation step
-        } catch (fallbackError) {
-          console.error('Fallback voting also failed:', fallbackError);
-          toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : "Failed to cast vote. Please try again.",
-            variant: "destructive",
-          });
-        }
+        return;
       }
+      
+      if (existingVotes && existingVotes.length > 0) {
+        toast({
+          title: "Already Voted",
+          description: "You have already cast a vote in this election.",
+          variant: "warning",
+        });
+        return;
+      }
+          
+      // Cast vote in blockchain (simulation)
+      const mockBlockchainResponse = await VotingContract.getInstance().castVote(
+        selectedElection.id,
+        selectedCandidate.id,
+        user.id
+      );
+      
+      console.log('Mock blockchain response:', mockBlockchainResponse);
+      
+      // Now record vote in database
+      const dbResult = await voteServiceDB.recordVote({
+        electionId: String(selectedElection.id),
+        candidateId: String(selectedCandidate.id),
+        voterId: String(user.id),
+        transactionHash: mockBlockchainResponse.transactionHash
+      });
+      
+      console.log('Database vote record result:', dbResult);
+      
+      if (dbResult.error) {
+        throw new Error(`Failed to record vote in database: ${dbResult.error.message}`);
+      }
+      
+      // Update the selectedCandidate to include the new vote
+      setSelectedCandidate({
+        ...selectedCandidate,
+        voteCount: (selectedCandidate.voteCount || 0) + 1
+      });
+      
+      // Set transaction hash for display
+      setTransactionHash(mockBlockchainResponse.transactionHash);
+      
+      // Move to confirmation step
+      setStep(7);
+      
+      toast({
+        title: "Vote Cast Successfully",
+        description: "Your vote has been recorded securely.",
+      });
+      
     } catch (error) {
-      console.error('Error in handleCastVote:', error);
+      console.error('Error casting vote:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to cast vote. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to cast your vote. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return {
     handleFaceVerificationSuccess,
     handleFaceVerificationError,

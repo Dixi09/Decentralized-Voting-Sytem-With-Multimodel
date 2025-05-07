@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface VoteConfirmationProps {
   election: Election | null;
@@ -49,6 +50,11 @@ const VoteConfirmation = ({
         const count = data?.length || 0;
         console.log('Calculated vote count:', count);
         setVoteCount(count);
+        
+        toast({
+          title: "Vote Count Updated",
+          description: `Current vote count for ${candidate.name}: ${count}`,
+        });
       } catch (err) {
         console.error('Error fetching vote count:', err);
         // Fall back to the candidate's vote count from props
@@ -76,6 +82,10 @@ const VoteConfirmation = ({
           (payload) => {
             console.log('Vote change detected:', payload);
             fetchVoteCount();
+            toast({
+              title: "Vote Recorded",
+              description: "A new vote has been cast for this candidate.",
+            });
           }
         )
         .subscribe();
