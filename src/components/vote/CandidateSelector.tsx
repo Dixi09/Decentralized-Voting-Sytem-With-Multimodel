@@ -130,8 +130,6 @@ const CandidateSelector = ({
                 )}
               </div>
               
-              {/* Remove the bio checks since it's not in the Candidate interface */}
-              
               <Separator className="my-3" />
               
               <div className="text-xs text-muted-foreground">

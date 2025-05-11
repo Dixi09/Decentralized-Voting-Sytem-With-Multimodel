@@ -72,7 +72,7 @@ class ElectionService {
   /**
    * Get a specific election by ID
    */
-  public async getElection(id: string | number): Promise<Election | undefined> {
+  public async getElection(id: string): Promise<Election | undefined> {
     try {
       const strId = String(id);
       
@@ -155,7 +155,7 @@ class ElectionService {
   /**
    * Check if a user has voted in a specific election
    */
-  public async hasUserVoted(userId: string, electionId: string | number): Promise<boolean> {
+  public async hasUserVoted(userId: string, electionId: string): Promise<boolean> {
     try {
       // Ensure electionId is a string for database query
       const strElectionId = String(electionId);

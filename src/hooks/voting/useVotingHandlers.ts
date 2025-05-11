@@ -1,4 +1,3 @@
-
 import VotingContract from '@/utils/VotingContract';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -137,7 +136,7 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       }
           
       // Cast vote in blockchain (simulation)
-      // Convert IDs to string to satisfy TypeScript type requirements
+      // Converting all IDs to strings to ensure consistency
       const mockBlockchainResponse = await VotingContract.getInstance().castVote(
         String(user.id),
         String(selectedElection.id),

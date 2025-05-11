@@ -10,7 +10,7 @@ class VotingService {
   /**
    * Cast a vote in a specific election
    */
-  public async castVote(userId: string, electionId: string | number, candidateId: string | number): Promise<VoteTransaction> {
+  public async castVote(userId: string, electionId: string, candidateId: string): Promise<VoteTransaction> {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {

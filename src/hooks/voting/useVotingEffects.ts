@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Election } from '@/VotingContract';
+import { Election } from '@/utils/VotingContract';
 
 /**
  * Hook that handles side effects for the voting process

@@ -53,17 +53,14 @@ class VotingContract {
     return this.electionService.getElections();
   }
   
-  public async getElection(id: string | number): Promise<Election | undefined> {
+  public async getElection(id: string): Promise<Election | undefined> {
     return this.electionService.getElection(id);
   }
   
   // Delegate to VotingService
-  public async castVote(userId: string, electionId: string | number, candidateId: string | number): Promise<VoteTransaction> {
-    // Always convert IDs to strings for consistency
-    const strElectionId = String(electionId);
-    const strCandidateId = String(candidateId);
-    
-    return this.votingService.castVote(userId, strElectionId, strCandidateId);
+  public async castVote(userId: string, electionId: string, candidateId: string): Promise<VoteTransaction> {
+    // Always use string IDs for consistency
+    return this.votingService.castVote(userId, electionId, candidateId);
   }
   
   public async getVoteTransactions(): Promise<VoteTransaction[]> {
@@ -71,7 +68,7 @@ class VotingContract {
   }
   
   // Check if a user has voted in a specific election
-  public async hasUserVoted(userId: string, electionId: string | number): Promise<boolean> {
+  public async hasUserVoted(userId: string, electionId: string): Promise<boolean> {
     return this.electionService.hasUserVoted(userId, electionId);
   }
 }

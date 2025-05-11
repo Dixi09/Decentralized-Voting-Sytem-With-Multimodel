@@ -1,5 +1,6 @@
+
 export interface Election {
-  id: string | number;
+  id: string;
   title: string;
   description: string;
   startDate: Date;
@@ -9,17 +10,17 @@ export interface Election {
 }
 
 export interface Candidate {
-  id: string | number;
+  id: string;
   name: string;
   party: string;
   voteCount: number;
 }
 
 export interface Vote {
-  id: string | number;
-  voterId: string | number;
-  electionId: string | number;
-  candidateId: string | number;
+  id: string;
+  voterId: string;
+  electionId: string;
+  candidateId: string;
   transactionHash: string;
   createdAt: Date;
 }
@@ -32,4 +33,4 @@ export interface VoteStatistics {
     party: string;
     votes: number;
   };
-} 
+}
