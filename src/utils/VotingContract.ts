@@ -5,14 +5,14 @@ import ElectionService from "./voting/ElectionService";
 import VotingService from "./voting/VotingService";
 
 export interface Candidate {
-  id: number | string;
+  id: string;
   name: string;
   party: string;
   voteCount: number;
 }
 
 export interface Election {
-  id: number | string;
+  id: string;
   title: string;
   description: string;
   startDate: Date;
@@ -26,8 +26,8 @@ export interface VoteTransaction {
   blockNumber: number;
   timestamp: Date;
   voter: string;
-  electionId: number;
-  candidateId: number;
+  electionId: string;
+  candidateId: string;
 }
 
 // Main class that integrates all voting functionality
@@ -53,17 +53,17 @@ class VotingContract {
     return this.electionService.getElections();
   }
   
-  public async getElection(id: number | string): Promise<Election | undefined> {
+  public async getElection(id: string | number): Promise<Election | undefined> {
     return this.electionService.getElection(id);
   }
   
   // Delegate to VotingService
-  public async castVote(userId: string, electionId: number | string, candidateId: number | string): Promise<VoteTransaction> {
-    // Convert string IDs to numbers if necessary for the voting service
-    const numElectionId = typeof electionId === 'string' ? parseInt(electionId) : electionId;
-    const numCandidateId = typeof candidateId === 'string' ? parseInt(candidateId) : candidateId;
+  public async castVote(userId: string, electionId: string | number, candidateId: string | number): Promise<VoteTransaction> {
+    // Always convert IDs to strings for consistency
+    const strElectionId = String(electionId);
+    const strCandidateId = String(candidateId);
     
-    return this.votingService.castVote(userId, numElectionId, numCandidateId);
+    return this.votingService.castVote(userId, strElectionId, strCandidateId);
   }
   
   public async getVoteTransactions(): Promise<VoteTransaction[]> {
@@ -71,7 +71,7 @@ class VotingContract {
   }
   
   // Check if a user has voted in a specific election
-  public async hasUserVoted(userId: string, electionId: number | string): Promise<boolean> {
+  public async hasUserVoted(userId: string, electionId: string | number): Promise<boolean> {
     return this.electionService.hasUserVoted(userId, electionId);
   }
 }

@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Election } from '@/VotingContract';
 
 /**
  * Hook that handles side effects for the voting process
@@ -97,7 +98,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
             // Fetch candidates for this election
             const { data: candidatesData, error: candidatesError } = await supabase
               .from('candidates')
-              .select('id, name, party, bio, photo_url')
+              .select('id, name, party, photo_url')
               .eq('election_id', election.id);
               
             if (candidatesError) {
@@ -124,7 +125,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         );
         
         // Filter out any null values from elections that failed to load candidates
-        const validElections = electionsWithCandidates.filter(election => election !== null);
+        const validElections = electionsWithCandidates.filter(election => election !== null) as Election[];
         
         console.log('Elections with candidates:', validElections);
         setElections(validElections);

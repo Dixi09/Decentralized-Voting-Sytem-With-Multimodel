@@ -5,33 +5,62 @@ import { storeVotingHistory } from "../storage/supabaseStorageService";
 
 class VotingService {
   private transactions: VoteTransaction[] = [];
-  private hasVoted: Record<string, Set<number>> = {}; // userId -> set of electionIds
+  private hasVoted: Record<string, Set<string>> = {}; // userId -> set of electionIds (changed to strings for UUIDs)
   
   /**
    * Cast a vote in a specific election
    */
-  public async castVote(userId: string, electionId: number | string, candidateId: number | string): Promise<VoteTransaction> {
+  public async castVote(userId: string, electionId: string | number, candidateId: string | number): Promise<VoteTransaction> {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          // Convert string IDs to numbers if necessary
-          const numElectionId = typeof electionId === 'string' ? parseInt(electionId) : electionId;
-          const numCandidateId = typeof candidateId === 'string' ? parseInt(candidateId) : candidateId;
+          // Convert any IDs to strings to ensure consistent comparison with UUIDs
+          const strElectionId = String(electionId);
+          const strCandidateId = String(candidateId);
           
-          // Find the election and candidate
-          const election = await this.getElection(numElectionId);
-          if (!election) {
+          console.log(`Casting vote: User ${userId}, Election ${strElectionId}, Candidate ${strCandidateId}`);
+          
+          // Find the election
+          const { data: electionData, error: electionError } = await supabase
+            .from('elections')
+            .select('id, title, is_active')
+            .eq('id', strElectionId)
+            .maybeSingle();
+          
+          if (electionError) {
+            console.error('Error fetching election:', electionError);
+            reject(new Error("Failed to fetch election data"));
+            return;
+          }
+          
+          if (!electionData) {
+            console.error('Election not found:', strElectionId);
             reject(new Error("Election not found"));
             return;
           }
           
-          if (!election.isActive) {
+          if (!electionData.is_active) {
+            console.error('Election is not active:', strElectionId);
             reject(new Error("Election is not active"));
             return;
           }
           
-          const candidate = election.candidates.find(c => c.id === numCandidateId);
-          if (!candidate) {
+          // Find the candidate
+          const { data: candidateData, error: candidateError } = await supabase
+            .from('candidates')
+            .select('id, name, party')
+            .eq('id', strCandidateId)
+            .eq('election_id', strElectionId)
+            .maybeSingle();
+          
+          if (candidateError) {
+            console.error('Error fetching candidate:', candidateError);
+            reject(new Error("Failed to fetch candidate data"));
+            return;
+          }
+          
+          if (!candidateData) {
+            console.error('Candidate not found:', strCandidateId, 'for election:', strElectionId);
             reject(new Error("Candidate not found"));
             return;
           }
@@ -41,14 +70,31 @@ class VotingService {
             this.hasVoted[userId] = new Set();
           }
           
-          if (this.hasVoted[userId].has(numElectionId)) {
+          if (this.hasVoted[userId].has(strElectionId)) {
             reject(new Error("You have already cast your vote in this election"));
             return;
           }
           
-          // Record the vote
-          candidate.voteCount++;
-          this.hasVoted[userId].add(numElectionId);
+          // Check if user has already voted in the database
+          const { count, error: voteCheckError } = await supabase
+            .from('votes')
+            .select('*', { count: 'exact', head: true })
+            .eq('voter_id', userId)
+            .eq('election_id', strElectionId);
+            
+          if (voteCheckError) {
+            console.error('Error checking previous votes:', voteCheckError);
+            reject(new Error("Failed to verify voting status"));
+            return;
+          }
+          
+          if (count && count > 0) {
+            reject(new Error("You have already cast your vote in this election"));
+            return;
+          }
+          
+          // Record the vote in memory
+          this.hasVoted[userId].add(strElectionId);
           
           // Create transaction record
           const transactionHash = `tx-${Math.random().toString(16).substring(2, 42)}`;
@@ -57,33 +103,32 @@ class VotingService {
             blockNumber: Math.floor(Math.random() * 1000000),
             timestamp: new Date(),
             voter: userId,
-            electionId: numElectionId,
-            candidateId: numCandidateId
+            electionId: strElectionId,
+            candidateId: strCandidateId
           };
           
           this.transactions.push(transaction);
           
           // Store voting history in Supabase
           try {
-            // Store vote in database - always convert IDs to strings for consistency with UUID format
+            // Store vote in database
             await supabase.from('votes').insert({
               voter_id: userId,
-              election_id: String(numElectionId),
-              candidate_id: String(numCandidateId),
+              election_id: strElectionId,
+              candidate_id: strCandidateId,
               transaction_hash: transaction.transactionHash
             });
 
             // Store voting history in Supabase storage
             const votingHistoryData = {
               election: {
-                id: numElectionId,
-                title: election.title
+                id: strElectionId,
+                title: electionData.title
               },
               candidate: {
-                id: candidate.id,
-                name: candidate.name,
-                party: candidate.party,
-                currentVoteCount: candidate.voteCount
+                id: candidateData.id,
+                name: candidateData.name,
+                party: candidateData.party || 'Independent',
               },
               timestamp: new Date().toISOString(),
               transaction: {
@@ -96,7 +141,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
-            storeVotingHistory(Number(candidate.id), numElectionId, votingHistoryData)
+            storeVotingHistory(strCandidateId, strElectionId, votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
           } catch (error) {
@@ -106,6 +151,7 @@ class VotingService {
           
           resolve(transaction);
         } catch (error) {
+          console.error('Error in castVote:', error);
           reject(error);
         }
       }, 1000); // Shorter delay to simulate faster blockchain confirmation
@@ -119,20 +165,6 @@ class VotingService {
     return new Promise((resolve) => {
       setTimeout(() => resolve(this.transactions), 300);
     });
-  }
-
-  // Helper method to get election by ID
-  private async getElection(id: number) {
-    return {
-      id,
-      title: id === 1 ? "Student Body President Election" : "Department Representative Election",
-      isActive: true,
-      candidates: [
-        { id: 1, name: "Test Candidate 1", party: "Test Party A", voteCount: 0 },
-        { id: 2, name: "Test Candidate 2", party: "Test Party B", voteCount: 0 },
-        { id: 3, name: "Test Candidate 3", party: "Test Party C", voteCount: 0 }
-      ]
-    };
   }
 }
 
