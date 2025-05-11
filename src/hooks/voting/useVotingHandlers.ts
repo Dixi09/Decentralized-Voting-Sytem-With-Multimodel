@@ -1,3 +1,4 @@
+
 import VotingContract from '@/utils/VotingContract';
 import { Election, Candidate } from '@/utils/VotingContract';
 import { toast } from '@/hooks/use-toast';
@@ -113,7 +114,7 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       const { data: existingVotes, error: checkError } = await supabase
         .from('votes')
         .select('id')
-        .eq('election_id', String(selectedElection.id))
+        .eq('election_id', String(selectedElection.id)) // Convert to string to ensure type safety
         .eq('voter_id', String(user.id))
         .limit(1);
         
@@ -144,7 +145,7 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       
       console.log('Mock blockchain response:', mockBlockchainResponse);
       
-      // Now record vote in database
+      // Now record vote in database - Ensure all IDs are passed as strings
       const dbResult = await voteServiceDB.recordVote({
         electionId: String(selectedElection.id),
         candidateId: String(selectedCandidate.id),

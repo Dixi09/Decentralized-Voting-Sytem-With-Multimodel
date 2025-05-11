@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { useCamera } from '@/hooks/useCamera';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
@@ -117,7 +118,7 @@ const FaceRecognition = ({ onVerified, onError, className, isRegistrationMode = 
       toast({
         title: "Face Not Registered",
         description: "Please register your face first using the Register Face button.",
-        variant: "warning",
+        variant: "destructive", // Changed from "warning" to "destructive" to match allowed variants
       });
       return;
     }
