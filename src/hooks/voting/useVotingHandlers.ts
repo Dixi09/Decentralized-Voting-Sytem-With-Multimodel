@@ -145,6 +145,9 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       
       console.log('Mock blockchain response:', mockBlockchainResponse);
       
+      // Store the transaction hash for the confirmation screen
+      setTransactionHash(mockBlockchainResponse.transactionHash);
+      
       // Now record vote in database - Ensure all IDs are passed as strings
       const dbResult = await voteServiceDB.recordVote({
         electionId: String(selectedElection.id),
@@ -164,9 +167,6 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
         ...selectedCandidate,
         voteCount: (selectedCandidate.voteCount || 0) + 1
       });
-      
-      // Set transaction hash for display
-      setTransactionHash(mockBlockchainResponse.transactionHash);
       
       // Move to confirmation step
       setStep(7);
