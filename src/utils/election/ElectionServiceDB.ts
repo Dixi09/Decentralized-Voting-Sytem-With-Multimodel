@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Election, Candidate, VoteStatistics } from "@/VotingContract";
 
 export class ElectionServiceDB {
-  private getVoteCount(votes: any[], candidateId: string | number): number {
+  private getVoteCount(votes: any[], candidateId: string): number {
     return votes.filter(vote => vote.candidate_id === String(candidateId)).length;
   }
 
-  private async getElection(electionId: string | number): Promise<Election | null> {
+  private async getElection(electionId: string): Promise<Election | null> {
     try {
       const { data, error } = await supabase
         .from('elections')
@@ -102,7 +102,7 @@ export class ElectionServiceDB {
   /**
    * Get vote statistics
    */
-  public async getVoteStatistics(electionId: string | number): Promise<VoteStatistics | null> {
+  public async getVoteStatistics(electionId: string): Promise<VoteStatistics | null> {
     try {
       const { data, error } = await supabase
         .from('vote_results')

@@ -126,7 +126,7 @@ class VotingService {
                 title: electionData.title
               },
               candidate: {
-                id: candidateData.id,
+                id: strCandidateId,
                 name: candidateData.name,
                 party: candidateData.party || 'Independent',
               },
@@ -169,3 +169,4 @@ class VotingService {
 }
 
 export default VotingService;
+
