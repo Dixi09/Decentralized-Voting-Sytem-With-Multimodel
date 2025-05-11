@@ -1,66 +1,148 @@
+
 import { useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 /**
- * Hook that sets up side effects for the voting process
+ * Hook that handles side effects for the voting process
  */
 export const useVotingEffects = (state: ReturnType<typeof import('./useVotingState').useVotingState>) => {
-  const { 
-    user, 
+  const {
+    user,
+    setElections,
+    setIsLoading,
     setIsBiometricsRegistered,
     setIsCheckingEligibility
   } = state;
-  
-  // Check if the user has registered biometrics
+
+  // Check if user is eligible to vote (has biometric registration)
   useEffect(() => {
-    const checkBiometrics = async () => {
+    const checkVoterEligibility = async () => {
       if (!user) return;
       
-      setIsCheckingEligibility(true);
-      
       try {
+        setIsCheckingEligibility(true);
+        
+        // Check if user has registered biometrics in the database
         const { data, error } = await supabase
           .from('user_biometrics')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
-          
+        
         if (error) {
-          console.error('Error checking biometrics:', error);
-          toast({
-            title: "Error",
-            description: "Could not verify your biometric registration status.",
-            variant: "destructive",
-          });
+          console.error('Error checking biometric registration:', error);
           return;
         }
         
-        if (data) {
-          console.log('Biometrics found for user:', user.id);
-          setIsBiometricsRegistered(true);
-        } else {
-          console.log('No biometrics found for user:', user.id);
-          setIsBiometricsRegistered(false);
-          toast({
-            title: "Biometrics Required",
-            description: "You need to register your biometrics before you can vote.",
-          });
-        }
-      } catch (err) {
-        console.error('Error in checkBiometrics:', err);
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred. Please try again later.",
-          variant: "destructive",
-        });
+        // If we found a record, the user has registered their biometrics
+        setIsBiometricsRegistered(!!data);
+        
+        console.log('Biometrics registration status:', !!data);
+      } catch (error) {
+        console.error('Error checking voter eligibility:', error);
       } finally {
         setIsCheckingEligibility(false);
       }
     };
     
-    checkBiometrics();
-  }, [user, toast, setIsBiometricsRegistered, setIsCheckingEligibility]);
+    checkVoterEligibility();
+  }, [user, setIsBiometricsRegistered, setIsCheckingEligibility]);
   
-  // Add any other global side effects here
+  // Fetch elections from the database
+  useEffect(() => {
+    const fetchElections = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        
+        console.log('Fetching elections from database...');
+        
+        // Fetch active elections from the database
+        const { data: electionData, error: electionError } = await supabase
+          .from('elections')
+          .select(`
+            id, 
+            title, 
+            description, 
+            start_date, 
+            end_date, 
+            is_active
+          `)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        if (electionError) {
+          console.error('Error fetching elections:', electionError);
+          toast({
+            title: "Error",
+            description: "Failed to load elections. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log('Fetched elections:', electionData);
+        
+        if (!electionData || electionData.length === 0) {
+          console.log('No active elections found');
+          setElections([]);
+          return;
+        }
+        
+        // For each election, fetch its candidates
+        const electionsWithCandidates = await Promise.all(
+          electionData.map(async (election) => {
+            // Fetch candidates for this election
+            const { data: candidatesData, error: candidatesError } = await supabase
+              .from('candidates')
+              .select('id, name, party, bio, photo_url')
+              .eq('election_id', election.id);
+              
+            if (candidatesError) {
+              console.error(`Error fetching candidates for election ${election.id}:`, candidatesError);
+              return null;
+            }
+            
+            // Map the database election to our application Election type
+            return {
+              id: election.id,
+              title: election.title,
+              description: election.description || '',
+              startDate: new Date(election.start_date),
+              endDate: new Date(election.end_date),
+              isActive: election.is_active,
+              candidates: candidatesData.map(candidate => ({
+                id: candidate.id,
+                name: candidate.name,
+                party: candidate.party || 'Independent',
+                bio: candidate.bio || '',
+                photoUrl: candidate.photo_url,
+                voteCount: 0 // We'll update this later if needed
+              }))
+            };
+          })
+        );
+        
+        // Filter out any null values from elections that failed to load candidates
+        const validElections = electionsWithCandidates.filter(election => election !== null) as unknown as typeof import('@/utils/VotingContract').Election[];
+        
+        console.log('Elections with candidates:', validElections);
+        setElections(validElections);
+        
+      } catch (error) {
+        console.error('Error in fetchElections:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load election data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchElections();
+  }, [user, setElections, setIsLoading]);
 };

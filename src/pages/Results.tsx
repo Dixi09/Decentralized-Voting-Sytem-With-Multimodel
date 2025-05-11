@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { BarChart2, PieChart as PieChartIcon, Activity, AlertCircle, Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
-import VotingContract, { Election } from '@/utils/VotingContract';
 import { supabase } from '@/integrations/supabase/client';
 
 const COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#D946EF', '#14B8A6', '#F97316', '#F43F5E'];
@@ -17,6 +16,20 @@ interface ElectionResult {
   party: string;
   votes: number;
   percentage: number;
+}
+
+interface Election {
+  id: string;
+  title: string;
+  description: string;
+  candidates: Candidate[];
+}
+
+interface Candidate {
+  id: string;
+  name: string;
+  party: string;
+  voteCount: number;
 }
 
 const Results = () => {
@@ -30,13 +43,98 @@ const Results = () => {
     const fetchElections = async () => {
       try {
         setLoading(true);
-        const votingContract = VotingContract.getInstance();
-        const electionList = await votingContract.getElections();
-        setElections(electionList);
         
-        if (electionList.length > 0) {
-          setSelectedElection(electionList[0]);
-          fetchResultsForElection(electionList[0]);
+        // Fetch elections from database
+        const { data: electionData, error: electionError } = await supabase
+          .from('elections')
+          .select(`
+            id,
+            title,
+            description
+          `)
+          .order('created_at', { ascending: false });
+          
+        if (electionError) {
+          console.error('Error fetching elections:', electionError);
+          setError('Failed to load election data');
+          toast({
+            title: "Error",
+            description: "Failed to load election results. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (!electionData || electionData.length === 0) {
+          setElections([]);
+          return;
+        }
+        
+        console.log('Fetched elections:', electionData);
+        
+        // For each election, fetch its candidates with vote counts
+        const electionsWithCandidates = await Promise.all(
+          electionData.map(async (election) => {
+            try {
+              // First fetch candidates
+              const { data: candidatesData, error: candidatesError } = await supabase
+                .from('candidates')
+                .select(`
+                  id,
+                  name,
+                  party
+                `)
+                .eq('election_id', election.id);
+                
+              if (candidatesError) {
+                console.error(`Error fetching candidates for election ${election.id}:`, candidatesError);
+                return null;
+              }
+              
+              // For each candidate, get their vote count
+              const candidatesWithVotes = await Promise.all(
+                candidatesData.map(async (candidate) => {
+                  // Get vote count
+                  const { count, error: voteError } = await supabase
+                    .from('votes')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('candidate_id', candidate.id);
+                    
+                  if (voteError) {
+                    console.error(`Error fetching votes for candidate ${candidate.id}:`, voteError);
+                    return {
+                      ...candidate,
+                      voteCount: 0
+                    };
+                  }
+                  
+                  return {
+                    ...candidate,
+                    voteCount: count || 0
+                  };
+                })
+              );
+              
+              return {
+                ...election,
+                candidates: candidatesWithVotes
+              };
+            } catch (err) {
+              console.error(`Error processing election ${election.id}:`, err);
+              return null;
+            }
+          })
+        );
+        
+        // Filter out any null values (failed elections)
+        const validElections = electionsWithCandidates.filter(e => e !== null) as Election[];
+        
+        setElections(validElections);
+        
+        // Set the first election as selected
+        if (validElections.length > 0) {
+          setSelectedElection(validElections[0]);
+          processResults(validElections[0]);
         }
       } catch (error) {
         console.error('Error fetching elections:', error);
@@ -73,7 +171,7 @@ const Results = () => {
         
       if (error) {
         console.error('Error fetching votes:', error);
-        // Fall back to mock data
+        // Fall back to existing data
         processResults(election);
         return;
       }
@@ -89,10 +187,10 @@ const Results = () => {
         }
       });
       
-      // If we have real votes, update the candidates with real vote counts
+      // Update candidates with real vote counts
       const updatedCandidates = election.candidates.map(candidate => ({
         ...candidate,
-        voteCount: voteCounts[String(candidate.id)] || candidate.voteCount || 0
+        voteCount: voteCounts[candidate.id] || candidate.voteCount || 0
       }));
       
       // Create a new election object with updated candidates
@@ -127,7 +225,7 @@ const Results = () => {
       
     } catch (err) {
       console.error('Error processing votes:', err);
-      // Fall back to mock data
+      // Fall back to existing data
       processResults(election);
     }
   };
@@ -151,7 +249,7 @@ const Results = () => {
   };
   
   const handleElectionChange = (value: string) => {
-    const election = elections.find(e => String(e.id) === value);
+    const election = elections.find(e => e.id === value);
     if (election) {
       setSelectedElection(election);
       fetchResultsForElection(election);
@@ -162,7 +260,8 @@ const Results = () => {
     return `${value.toFixed(1)}%`;
   };
   
-  // ... keep existing code (the renderBlockchainInfo function)
+  // ... keep existing code (renderBlockchainInfo function)
+  
   const renderBlockchainInfo = () => {
     return (
       <div className="mt-6">
@@ -245,7 +344,7 @@ const Results = () => {
               </SelectTrigger>
               <SelectContent>
                 {elections.map(election => (
-                  <SelectItem key={election.id} value={election.id.toString()}>
+                  <SelectItem key={election.id} value={election.id}>
                     {election.title}
                   </SelectItem>
                 ))}
@@ -349,6 +448,7 @@ const Results = () => {
               </CardContent>
             </Card>
             
+            {/* Keep blockchain info section */}
             {renderBlockchainInfo()}
           </>
         ) : (
