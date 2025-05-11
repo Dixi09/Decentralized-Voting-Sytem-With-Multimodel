@@ -130,9 +130,7 @@ const CandidateSelector = ({
                 )}
               </div>
               
-              {candidate.bio && (
-                <p className="text-sm mb-3">{candidate.bio}</p>
-              )}
+              {/* Remove the bio checks since it's not in the Candidate interface */}
               
               <Separator className="my-3" />
               

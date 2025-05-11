@@ -117,8 +117,6 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
                 id: candidate.id,
                 name: candidate.name,
                 party: candidate.party || 'Independent',
-                bio: candidate.bio || '',
-                photoUrl: candidate.photo_url,
                 voteCount: 0 // We'll update this later if needed
               }))
             };
@@ -126,7 +124,7 @@ export const useVotingEffects = (state: ReturnType<typeof import('./useVotingSta
         );
         
         // Filter out any null values from elections that failed to load candidates
-        const validElections = electionsWithCandidates.filter(election => election !== null) as unknown as typeof import('@/utils/VotingContract').Election[];
+        const validElections = electionsWithCandidates.filter(election => election !== null);
         
         console.log('Elections with candidates:', validElections);
         setElections(validElections);
