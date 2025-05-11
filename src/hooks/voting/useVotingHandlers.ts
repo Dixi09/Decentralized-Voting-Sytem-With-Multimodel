@@ -114,7 +114,7 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       const { data: existingVotes, error: checkError } = await supabase
         .from('votes')
         .select('id')
-        .eq('election_id', String(selectedElection.id)) // Convert to string to ensure type safety
+        .eq('election_id', String(selectedElection.id))
         .eq('voter_id', String(user.id))
         .limit(1);
         
@@ -137,10 +137,11 @@ export const useVotingHandlers = (state: ReturnType<typeof import('./useVotingSt
       }
           
       // Cast vote in blockchain (simulation)
+      // Convert IDs to string to satisfy TypeScript type requirements
       const mockBlockchainResponse = await VotingContract.getInstance().castVote(
-        selectedElection.id,
-        selectedCandidate.id,
-        user.id
+        String(user.id),
+        String(selectedElection.id),
+        String(selectedCandidate.id)
       );
       
       console.log('Mock blockchain response:', mockBlockchainResponse);
