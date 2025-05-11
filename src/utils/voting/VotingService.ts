@@ -169,4 +169,3 @@ class VotingService {
 }
 
 export default VotingService;
-
