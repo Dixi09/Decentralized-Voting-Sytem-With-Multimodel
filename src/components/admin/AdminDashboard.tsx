@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,9 @@ const AdminDashboard = () => {
   const [elections, setElections] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  // Add state for selected election and candidates
+  const [selectedElection, setSelectedElection] = useState<any | null>(null);
+  const [candidates, setCandidates] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -162,6 +166,27 @@ const AdminDashboard = () => {
         title: 'Error',
         description: 'Failed to reset biometric data.',
         variant: 'destructive',
+      });
+    }
+  };
+
+  // Add fetchCandidates function
+  const fetchCandidates = async (electionId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('election_id', electionId);
+        
+      if (error) throw error;
+      
+      setCandidates(data || []);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load candidates data.",
+        variant: "destructive",
       });
     }
   };
