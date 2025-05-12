@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +24,7 @@ import {
   Eye,
   Loader2
 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -162,6 +162,41 @@ const AdminDashboard = () => {
         title: 'Error',
         description: 'Failed to reset biometric data.',
         variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveCandidate = async (candidateId: string) => {
+    try {
+      console.log(`Removing candidate with ID: ${candidateId}`);
+      
+      // Delete the candidate from the database
+      const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', String(candidateId));
+        
+      if (error) {
+        console.error('Error during candidate removal:', error);
+        throw error;
+      }
+      
+      toast({
+        title: "Candidate Removed",
+        description: "The candidate has been successfully removed from the election.",
+      });
+      
+      // Update candidates list if selectedElection is available
+      if (selectedElection) {
+        fetchCandidates(selectedElection.id);
+      }
+      
+    } catch (error) {
+      console.error("Error removing candidate:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove the candidate. Please try again.",
+        variant: "destructive",
       });
     }
   };

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -15,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Election {
   id: string;
@@ -290,10 +290,11 @@ const Admin = () => {
 
   const handleRemoveCandidate = async (candidateId: string) => {
     try {
+      // Delete the candidate from the database
       const { error } = await supabase
         .from('candidates')
         .delete()
-        .eq('id', candidateId);
+        .eq('id', String(candidateId));
         
       if (error) throw error;
       
@@ -681,14 +682,35 @@ const Admin = () => {
                                     <p className="font-medium">{candidate.name}</p>
                                     <p className="text-sm text-muted-foreground">{candidate.party}</p>
                                   </div>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => handleRemoveCandidate(candidate.id)}
-                                    className="text-destructive border-destructive hover:bg-destructive/10"
-                                  >
-                                    Remove
-                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="text-destructive border-destructive hover:bg-destructive/10"
+                                      >
+                                        Remove
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This action will permanently remove this candidate from the election.
+                                          Any votes already cast for this candidate will remain in the system.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                          onClick={() => handleRemoveCandidate(candidate.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Remove Candidate
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               ))}
                             </div>
