@@ -141,6 +141,7 @@ class VotingService {
             };
             
             // Store the voting history asynchronously (don't await)
+            // Fix the type error here - ensuring we use string type for all IDs
             storeVotingHistory(strCandidateId, strElectionId, votingHistoryData)
               .then(() => console.log('Voting history stored successfully'))
               .catch(err => console.error('Failed to store voting history:', err));
